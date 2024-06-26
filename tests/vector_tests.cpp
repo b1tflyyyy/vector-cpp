@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <cstdio>
 #include <gtest/gtest.h>
 #include <custom_vector.hpp>
 #include <format>
@@ -86,4 +87,39 @@ TEST(vector, copy_ctor)
         ASSERT_EQ(ptr_1[i], ptr_2[i]);
     }
     std::cout << std::endl;
+
+    // copy assignment operator
+    // case 1
+    custom::vector<int> vec_3{ 1, 2, 3, 4, 5, 6 };
+    custom::vector<int> vec_4{ 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+    
+    vec_4 = vec_3;
+    ASSERT_EQ(vec_4.size(), vec_3.size());
+    auto ptr_4{ std::data(vec_4) };
+    auto ptr_3{ std::data(vec_3) };
+    std::cout << "Copy Assignment ctor case 1: ";
+    for (std::size_t i{}; i < vec_4.size(); ++i)
+    {
+        std::cout << std::format("pair {}:{} | ", ptr_1[i], ptr_2[i]);
+        ASSERT_EQ(ptr_4[i], ptr_3[i]);
+    }
+    std::cout << std::endl;
+
+    // case 2
+    custom::vector<int> vec_5{ 1, 2, 3, 4, 5, 6 };
+    custom::vector<int> vec_6{ 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+    
+    vec_5 = vec_6;
+    ASSERT_EQ(vec_5.size(), vec_6.size());
+    std::cout << "Copy Assignment ctor case 2: ";
+    for (std::size_t i{}; i < vec_5.size(); ++i)
+    {
+        std::cout << std::format("pair {}:{} | ", vec_5[i], vec_6[i]);
+        ASSERT_EQ(vec_6[i], vec_5[i]);
+    }
+    std::cout << std::endl;
+
+    // case 3
+    custom::vector<int> vec_7{ 1, 2, 3, 4, 5 };
+    vec_7 = vec_7;
 }
