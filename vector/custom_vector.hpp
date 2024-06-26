@@ -23,6 +23,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <iterator>
 #include <memory>
@@ -48,7 +49,63 @@ namespace custom
         // ----------------------------------------------------------------------------------------------------------------------
         class iterator
         {
+        public:
+            using iterator_category = std::forward_iterator_tag;
+            using difference_type = std::ptrdiff_t;
+            using value_type = T;
+            using pointer = allocator_traits::pointer;
+            using reference = value_type&;
 
+        public:    
+            // ----------------------------------------------------------------------------------------------------------------------
+            explicit iterator(pointer ptr) :
+                Pointer{ ptr }
+            { }
+
+            ~iterator() = default;
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            reference operator*() const
+            {
+                return *Pointer;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            pointer operator->() 
+            {
+                return Pointer;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            iterator& operator++()
+            {
+                ++Pointer;
+                return *this;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            iterator operator++(std::int32_t)
+            {
+                iterator tmp{ *this };
+                ++(*this);
+
+                return tmp;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            bool operator==(const iterator& other) noexcept
+            {
+                return Pointer == other.Pointer;
+            }
+
+            // ----------------------------------------------------------------------------------------------------------------------
+            bool operator!=(const iterator& other) noexcept
+            {
+                return Pointer != other.Pointer;
+            }
+
+        private:
+            pointer Pointer;
         };
 
     public:
@@ -180,6 +237,18 @@ namespace custom
         constexpr size_type capacity() const noexcept
         {
             return Capacity;
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr iterator begin() noexcept
+        {
+            return iterator{ Buffer };
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr iterator end() noexcept
+        {
+            return iterator{ Buffer + Size };
         }
 
     private:
