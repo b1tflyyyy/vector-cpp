@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <algorithm>
 #include <cstdio>
 #include <gtest/gtest.h>
 #include <custom_vector.hpp>
@@ -157,4 +158,16 @@ TEST(vector, move_ctor)
     ASSERT_EQ(0, v1.size());
     ASSERT_EQ(0, v1.capacity());
     ASSERT_EQ(std::data(v1), nullptr);
+}
+
+// ----------------------------------------------------------------------------------------------------------------------
+TEST(vector, iterator)
+{
+    custom::vector<int> vec{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    std::fill(std::begin(vec), std::end(vec), 66);
+
+    for (const auto el : vec)
+    {
+        ASSERT_EQ(el, 66);
+    }
 }

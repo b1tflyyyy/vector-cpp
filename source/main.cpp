@@ -23,17 +23,10 @@
 
 #include <iostream>
 #include <custom_vector.hpp>
-#include <iterator>
 
 int main()
 {
     custom::vector<int> vec{ { 1, 2, 3, 4, 5, 6, 7 }};
-    auto ptr{ std::data(vec) };
-
-    for (std::size_t i{}; i < 7; ++i)
-    {
-        std::cout << ptr[i] << '\n';
-    }
 
     std::cout << "hello world\n";
     return 0;
