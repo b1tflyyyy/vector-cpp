@@ -59,7 +59,7 @@ namespace custom
 
         // ----------------------------------------------------------------------------------------------------------------------
         explicit vector(size_type count, const_reference value, const Alloc& alloc = Alloc()) :
-            Size{ count }, Capacity{ count * 2 }, Allocator{ alloc }
+            Capacity{ count * 2 }, Size{ count }, Allocator{ alloc }
         { 
             Buffer = allocator_traits::allocate(Allocator, Capacity);
             for (std::size_t i{}; i < Size; ++i)
@@ -70,7 +70,7 @@ namespace custom
 
         // ----------------------------------------------------------------------------------------------------------------------
         constexpr vector(std::initializer_list<value_type> list, const Alloc& alloc = Alloc()) :
-            Size{ list.size() }, Capacity{ list.size() * 2 }, Allocator{ alloc }
+            Capacity{ list.size() * 2 }, Size{ list.size() }, Allocator{ alloc }
         {
             Buffer = allocator_traits::allocate(Allocator, Capacity);
             std::copy(std::begin(list), std::end(list), Buffer);
@@ -78,7 +78,7 @@ namespace custom
 
         // ----------------------------------------------------------------------------------------------------------------------
         vector(const vector& other) :
-            Size{ other.Size }, Capacity{ other.Capacity }, Allocator{ other.Allocator }
+            Capacity{ other.Capacity }, Size{ other.Size }, Allocator{ other.Allocator }
         {
             Buffer = allocator_traits::allocate(Allocator, Capacity);
             std::memcpy(Buffer, other.Buffer, sizeof(value_type) * Size);
@@ -87,6 +87,11 @@ namespace custom
         // ----------------------------------------------------------------------------------------------------------------------
         vector& operator=(const vector& other)
         {
+            if (this == &other)
+            {
+                return *this;
+            }
+
             if (Capacity < other.Size)
             {
                 this->~vector();
@@ -105,6 +110,18 @@ namespace custom
         ~vector() noexcept
         {
             allocator_traits::deallocate(Allocator, Buffer, Capacity);
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr reference operator[](size_type idx)
+        {
+            return Buffer[idx];
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr const_reference operator[](size_type idx) const
+        {
+            return Buffer[idx];
         }
 
         // ----------------------------------------------------------------------------------------------------------------------
