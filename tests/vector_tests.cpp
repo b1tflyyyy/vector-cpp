@@ -123,3 +123,38 @@ TEST(vector, copy_ctor)
     custom::vector<int> vec_7{ 1, 2, 3, 4, 5 };
     vec_7 = vec_7;
 }
+
+// ----------------------------------------------------------------------------------------------------------------------
+TEST(vector, move_ctor)
+{
+    // move ctor
+    custom::vector<int> a{ 1, 2, 3, 4, 5, 6, 7, 8 };
+    auto a_sz{ a.size() };
+    auto a_cp{ a.capacity() };
+    auto a_ptr{ std::data(a) };
+
+    auto b{ std::move(a) };
+
+    ASSERT_EQ(b.size(), a_sz);
+    ASSERT_EQ(b.capacity(), a_cp);
+    ASSERT_EQ(std::data(b), a_ptr);
+    ASSERT_EQ(0, a.size());
+    ASSERT_EQ(0, a.capacity());
+    ASSERT_EQ(std::data(a), nullptr);
+
+    // move assignment ctor
+    custom::vector<int> v1{ 1, 2, 3, 4, 5, 6 };
+    auto v_sz{ v1.size() };
+    auto v_cp{ v1.capacity() };
+    auto v_ptr{ std::data(v1) };
+
+    custom::vector<int> v2{ 3, 4, 5, 6, 7, 8 };
+    v2 = std::move(v1);
+
+    ASSERT_EQ(v2.size(), v_sz);
+    ASSERT_EQ(v2.capacity(), v_cp);
+    ASSERT_EQ(std::data(v2), v_ptr);
+    ASSERT_EQ(0, v1.size());
+    ASSERT_EQ(0, v1.capacity());
+    ASSERT_EQ(std::data(v1), nullptr);
+}
