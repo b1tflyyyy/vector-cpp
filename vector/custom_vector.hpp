@@ -85,7 +85,7 @@ namespace custom
         }
 
         // ----------------------------------------------------------------------------------------------------------------------
-        vector& operator=(const vector& other)
+        vector& operator=(const vector& other) 
         {
             if (this == &other)
             {
@@ -105,6 +105,40 @@ namespace custom
 
             return *this;
         } 
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr vector(vector&& other) noexcept
+        {
+            Size = other.Size;
+            Capacity = other.Capacity;
+            Buffer = other.Buffer;
+            Allocator = std::move(other.Allocator);
+
+            other.Size = 0;
+            other.Capacity = 0;
+            other.Buffer = nullptr;
+        }
+
+        // ---------------------------------------------------------------------------------------------------------------------- 
+        vector& operator=(vector&& other) noexcept(allocator_traits::propagate_on_container_move_assignment::value ||
+                                                   allocator_traits::is_always_equal::value)
+        {
+            if (!is_empty())
+            {
+                this->~vector();
+            }
+
+            Size = other.Size;
+            Capacity = other.Capacity;
+            Buffer = other.Buffer;
+            Allocator = std::move(other.Allocator);
+
+            other.Size = 0;
+            other.Capacity = 0;
+            other.Buffer = nullptr;
+
+            return *this;
+        }
 
         // ----------------------------------------------------------------------------------------------------------------------
         ~vector() noexcept
