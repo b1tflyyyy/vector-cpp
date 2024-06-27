@@ -24,6 +24,7 @@
 #include <cstdio>
 #include <gtest/gtest.h>
 #include <custom_vector.hpp>
+#include <string>
 #include <format>
 
 // ----------------------------------------------------------------------------------------------------------------------
@@ -32,8 +33,8 @@ TEST(vector, ctor)
     // default ctor
     custom::vector<int> vec_1{};
     ASSERT_EQ(0, vec_1.size());
-    ASSERT_EQ(0, vec_1.capacity());
-    ASSERT_EQ(nullptr, vec_1.data());
+    ASSERT_EQ(2, vec_1.capacity());
+    ASSERT_NE(nullptr, vec_1.data());
     ASSERT_EQ(true, vec_1.is_empty());
 
     // init with value
@@ -123,6 +124,49 @@ TEST(vector, copy_ctor)
     // case 3
     custom::vector<int> vec_7{ 1, 2, 3, 4, 5 };
     vec_7 = vec_7;
+
+    // case 4
+    custom::vector<std::string> v1{ "hello", "hello1", "hello2", "hello3", "hello4", "hello5" };
+    custom::vector<std::string> v2{ v1 };
+    
+    auto ptrr_1{ std::data(v1) };
+    auto ptrr_2{ std::data(v2) };
+
+    for (std::size_t i{}; i < v1.size(); ++i)
+    {
+        ASSERT_EQ(ptrr_1[i], ptrr_2[i]);
+        ASSERT_NE(&ptrr_1[i], &ptrr_2[i]);
+    }
+
+    // case 5
+    custom::vector<int> v3{ 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    custom::vector<int> v4{};
+    for (std::size_t i{}; i < 500; ++i)
+    {
+        v4.push_back(i);
+    }
+    for (std::size_t i{}; i < 500; ++i)
+    {
+        ASSERT_EQ(v4[i], i);
+    }
+
+    v4 = v3;
+
+    auto p3{ std::data(v3) };
+    auto p4{ std::data(v4) };
+    for (std::size_t i{}; i < v3.size() || i < v4.size(); ++i)
+    {
+        ASSERT_EQ(p3[i], p4[i]);
+        ASSERT_NE(&p3[i], &p4[i]);
+    }
+
+    v3.push_back(10);
+    v3.push_back(11);
+
+    for (std::size_t i{}; i < 11; ++i)
+    {
+        ASSERT_EQ(v3[i], i + 1);
+    }
 }
 
 // ----------------------------------------------------------------------------------------------------------------------
@@ -140,8 +184,8 @@ TEST(vector, move_ctor)
     ASSERT_EQ(b.capacity(), a_cp);
     ASSERT_EQ(std::data(b), a_ptr);
     ASSERT_EQ(0, a.size());
-    ASSERT_EQ(0, a.capacity());
-    ASSERT_EQ(std::data(a), nullptr);
+    ASSERT_EQ(2, a.capacity());
+    ASSERT_NE(std::data(a), std::data(b));
 
     // move assignment ctor
     custom::vector<int> v1{ 1, 2, 3, 4, 5, 6 };
@@ -156,8 +200,27 @@ TEST(vector, move_ctor)
     ASSERT_EQ(v2.capacity(), v_cp);
     ASSERT_EQ(std::data(v2), v_ptr);
     ASSERT_EQ(0, v1.size());
-    ASSERT_EQ(0, v1.capacity());
-    ASSERT_EQ(std::data(v1), nullptr);
+    ASSERT_EQ(2, v1.capacity());
+    ASSERT_NE(std::data(v1), std::data(v2));
+
+    custom::vector<int> v3{ 1, 2, 3, 4, 5, 6, 7 };
+    custom::vector<int> v4{ 9, 8, 5 };
+
+    v3 = std::move(v4);
+
+    ASSERT_EQ(v3[0], 9);
+    ASSERT_EQ(v3[1], 8);
+    ASSERT_EQ(v3[2], 5);
+    ASSERT_EQ(v3.size(), 3);
+
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        v4.push_back(i);
+    }
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        ASSERT_EQ(v4[i], i);
+    }
 }
 
 // ----------------------------------------------------------------------------------------------------------------------
