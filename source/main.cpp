@@ -21,13 +21,73 @@
 // SOFTWARE.
 
 
+#include <cassert>
+#include <cstddef>
 #include <iostream>
+#include <cstdint>
 #include <custom_vector.hpp>
+#include <string>
+#include <vector>
+
+static std::ptrdiff_t counter{};
+
+struct A
+{
+    A()
+    {
+        ++counter;
+        std::cout << "A() ctor\n";
+    }
+    ~A()
+    {
+        --counter;
+        std::cout << "~A() dtor\n";
+    }
+    A(const A& other)
+    {
+        ++counter;
+        std::cout << "A() copy ctor\n";
+    }
+    A& operator=(const A&)
+    {
+        ++counter;
+        std::cout << "A=() ctor\n";
+        return *this;
+    }
+    A(A&&) noexcept
+    {
+        ++counter;
+        std::cout << "A move ctor\n";
+    }
+
+    std::uint64_t* Ptr;
+};
 
 int main()
 {
-    custom::vector<int> vec{ { 1, 2, 3, 4, 5, 6, 7 }};
+    std::vector<int> a{};
+    #if 0
+    {
+    custom::vector<A> vec{};
+    A a{};
+    for (std::size_t i{}; i < 3253; ++i)
+    {
+        vec.push_back(a);
+    }
+    }
+    std::cout << "Counter: " << counter << '\n';
+    assert(counter == 0);
+    std::cout << std::endl;
+    #endif
+    
+    {
+    custom::vector<std::string> vec{ "hello", "hello1", "hello2", "hello3", "hello4", "hello5" };
+    for (const auto& el : vec)
+    {
+        std::cout << el << ' ';
+    }
+    std::cout << std::endl;
+    }
 
-    std::cout << "hello world\n";
     return 0;
 }

@@ -111,8 +111,10 @@ namespace custom
     public:
         // ----------------------------------------------------------------------------------------------------------------------
         constexpr vector() noexcept(noexcept(Alloc())) : 
-            Capacity{ }, Size{ }, Buffer{ nullptr }
-        { }
+            Capacity{ 2 }, Size{}, Buffer{ nullptr }
+        { 
+            Buffer = allocator_traits::allocate(Allocator, Capacity);
+        }
 
         // ----------------------------------------------------------------------------------------------------------------------
         explicit vector(size_type count, const_reference value, const Alloc& alloc = Alloc()) :
@@ -121,7 +123,7 @@ namespace custom
             Buffer = allocator_traits::allocate(Allocator, Capacity);
             for (std::size_t i{}; i < Size; ++i)
             {
-                allocator_traits::construct(Allocator, (Buffer + i), value);
+                allocator_traits::construct(Allocator, Buffer + i, value);
             }
         }
 
@@ -130,7 +132,7 @@ namespace custom
             Capacity{ list.size() * 2 }, Size{ list.size() }, Allocator{ alloc }
         {
             Buffer = allocator_traits::allocate(Allocator, Capacity);
-            std::copy(std::begin(list), std::end(list), Buffer);
+            std::uninitialized_copy(std::begin(list), std::end(list), Buffer);
         }
 
         // ----------------------------------------------------------------------------------------------------------------------
@@ -138,7 +140,10 @@ namespace custom
             Capacity{ other.Capacity }, Size{ other.Size }, Allocator{ other.Allocator }
         {
             Buffer = allocator_traits::allocate(Allocator, Capacity);
-            std::memcpy(Buffer, other.Buffer, sizeof(value_type) * Size);
+            for (std::size_t i{}; i < Size; ++i)
+            {
+                allocator_traits::construct(Allocator, Buffer + i, other.Buffer[i]);
+            }
         }
 
         // ----------------------------------------------------------------------------------------------------------------------
@@ -152,13 +157,16 @@ namespace custom
             if (Capacity < other.Size)
             {
                 this->~vector();
-                Capacity = other.Capacity;
+                Buffer = allocator_traits::allocate(Allocator, other.Capacity);
 
-                Buffer = allocator_traits::allocate(Allocator, Capacity);
+                Capacity = other.Capacity;
             }
 
             Size = other.Size;
-            std::memcpy(Buffer, other.Buffer, sizeof(value_type) * Size);
+            for (std::size_t i{}; i < Size; ++i)
+            {
+                allocator_traits::construct(Allocator, Buffer + i, other.Buffer[i]);
+            }
 
             return *this;
         } 
@@ -174,13 +182,14 @@ namespace custom
             other.Size = 0;
             other.Capacity = 0;
             other.Buffer = nullptr;
+            other.reserve(2); // TODO: think about it
         }
 
         // ---------------------------------------------------------------------------------------------------------------------- 
         vector& operator=(vector&& other) noexcept(allocator_traits::propagate_on_container_move_assignment::value ||
                                                    allocator_traits::is_always_equal::value)
         {
-            if (!is_empty())
+            if (!this->is_empty())
             {
                 this->~vector();
             }
@@ -193,6 +202,7 @@ namespace custom
             other.Size = 0;
             other.Capacity = 0;
             other.Buffer = nullptr;
+            other.reserve(2); // TODO: think about it
 
             return *this;
         }
@@ -200,6 +210,11 @@ namespace custom
         // ----------------------------------------------------------------------------------------------------------------------
         ~vector() noexcept
         {
+            for (std::size_t i{}; i < Size; ++i)
+            {
+                allocator_traits::destroy(Allocator, Buffer + i);
+            }
+
             allocator_traits::deallocate(Allocator, Buffer, Capacity);
         }
 
@@ -249,6 +264,49 @@ namespace custom
         constexpr iterator end() noexcept
         {
             return iterator{ Buffer + Size };
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr void reserve(std::size_t new_capacity) 
+        {
+            if (new_capacity <= Capacity)
+            {
+                return;
+            }
+
+            pointer new_buffer{ allocator_traits::allocate(Allocator, new_capacity) };
+            for (std::size_t i{}; i < Size; ++i)
+            {
+                allocator_traits::construct(Allocator, new_buffer + i, std::move(Buffer[i]));
+            }
+
+            this->~vector();
+            Buffer = new_buffer;
+            Capacity = new_capacity;
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr void push_back(const_reference value)
+        {
+            if (Size == Capacity)
+            {
+                this->reserve(Capacity * 2);
+            }
+
+            allocator_traits::construct(Allocator, Buffer + Size, value);
+            ++Size;
+        } 
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr void push_back(value_type&& value)
+        {
+            if (Size == Capacity)
+            {
+                this->reserve(Capacity * 2);
+            }
+
+            allocator_traits::construct(Allocator, Buffer + Size, std::move(value));
+            ++Size;
         }
 
     private:
