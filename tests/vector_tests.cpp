@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include <algorithm>
+#include <cstdint>
 #include <cstdio>
 #include <gtest/gtest.h>
 #include <custom_vector.hpp>
@@ -233,4 +234,81 @@ TEST(vector, iterator)
     {
         ASSERT_EQ(el, 66);
     }
+}
+
+// ----------------------------------------------------------------------------------------------------------------------
+struct A 
+{
+    explicit A(std::int32_t a1, std::int32_t b1, std::int32_t c1) :
+        a{ a1 }, b{ b1 }, c{ c1 }
+    { }
+
+    std::int32_t a, b, c;
+};
+
+// ----------------------------------------------------------------------------------------------------------------------
+TEST(vector, emplace_back)
+{
+    custom::vector<A> vec{};
+    vec.emplace_back(1, 2, 3);
+
+    ASSERT_EQ(vec[0].a, 1);
+    ASSERT_EQ(vec[0].b, 2);
+    ASSERT_EQ(vec[0].c, 3);
+    ASSERT_EQ(vec.size(), 1);
+
+    vec.emplace_back(4, 5, 6);
+
+    ASSERT_EQ(vec[1].a, 4);
+    ASSERT_EQ(vec[1].b, 5);
+    ASSERT_EQ(vec[1].c, 6);
+    ASSERT_EQ(vec.size(), 2);
+
+    vec.emplace_back(7, 8, 9);
+
+    ASSERT_EQ(vec[2].a, 7);
+    ASSERT_EQ(vec[2].b, 8);
+    ASSERT_EQ(vec[2].c, 9);
+    ASSERT_EQ(vec.size(), 3);
+}
+
+// ----------------------------------------------------------------------------------------------------------------------
+TEST(vector, resize)
+{
+    custom::vector<std::string> vec{};
+    vec.reserve(5);
+
+    vec.push_back("hello"); 
+    vec.push_back("world");
+    vec.push_back("like");
+    vec.push_back("you");
+    vec.push_back("know");
+
+    vec.resize(5);
+
+    ASSERT_EQ("hello", vec[0]);
+    ASSERT_EQ("world", vec[1]);
+    ASSERT_EQ("like", vec[2]);
+    ASSERT_EQ("you", vec[3]);
+    ASSERT_EQ("know", vec[4]);
+    ASSERT_EQ(vec.size(), 5);
+
+    vec.resize(10);
+
+    ASSERT_EQ("hello", vec[0]);
+    ASSERT_EQ("world", vec[1]);
+    ASSERT_EQ("like", vec[2]);
+    ASSERT_EQ("you", vec[3]);
+    ASSERT_EQ("know", vec[4]);
+    ASSERT_EQ(vec.size(), 10);
+    
+    for (std::size_t i{ 5 }; i < vec.size(); ++i)
+    {
+        ASSERT_EQ(vec[i], "");
+    }
+
+    vec.resize(2);
+    ASSERT_EQ("hello", vec[0]);
+    ASSERT_EQ("world", vec[1]);
+    ASSERT_EQ(vec.size(), 2);
 }
