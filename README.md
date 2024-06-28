@@ -25,7 +25,14 @@
 - CI will be soon
 
 ## 🖼 How to build & test
-`Will be soon...`
+```
+mkdir build
+cd build
+cmake ..
+cmake --build .
+cd tests
+./Tests
+```
 
 ## 🔒 Supported OS:
 - [x] GNU/Linux (verified on Void Linux)
