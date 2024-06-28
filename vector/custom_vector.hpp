@@ -309,6 +309,51 @@ namespace custom
             ++Size;
         }
 
+        // ----------------------------------------------------------------------------------------------------------------------
+        template <typename... Args>
+        constexpr reference emplace_back(Args&&... args)
+        {
+            if (Size == Capacity)
+            {
+                this->reserve(Capacity * 2);
+            }
+
+            allocator_traits::construct(Allocator, Buffer + Size, std::forward<Args>(args)...);
+            return *(Buffer + Size++);
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------
+        constexpr void resize(size_type new_size)
+        {
+            if (new_size == Size)
+            {
+                return;
+            }
+
+            if (Size > new_size)
+            {
+                for (std::size_t i{ new_size }; i < Size; ++i)
+                {
+                    allocator_traits::destroy(Allocator, Buffer + i);
+                }
+
+                Size = new_size;
+                return;
+            }
+
+            if (new_size >= Capacity)
+            {
+                this->reserve(Capacity *  2);
+            }
+            
+            for (std::size_t i{ Size }; i < new_size; ++i)
+            {
+                allocator_traits::construct(Allocator, Buffer + i, value_type{});
+            }
+            
+            Size = new_size;
+        }
+
     private:
         std::size_t Capacity;
         std::size_t Size;
