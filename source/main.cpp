@@ -23,14 +23,17 @@
 
 #include <cassert>
 #include <cstddef>
+#include <cstdio>
 #include <iostream>
 #include <cstdint>
 #include <custom_vector.hpp>
 #include <string>
 #include <vector>
+#include <format>
 
 static std::ptrdiff_t counter{};
 
+#if 0
 struct A
 {
     A()
@@ -62,32 +65,33 @@ struct A
 
     std::uint64_t* Ptr;
 };
+#endif
 
-int main()
+template <typename C>
+void Show_Cont(C& cont)
 {
-    std::vector<int> a{};
-    #if 0
-    {
-    custom::vector<A> vec{};
-    A a{};
-    for (std::size_t i{}; i < 3253; ++i)
-    {
-        vec.push_back(a);
-    }
-    }
-    std::cout << "Counter: " << counter << '\n';
-    assert(counter == 0);
-    std::cout << std::endl;
-    #endif
-    
-    {
-    custom::vector<std::string> vec{ "hello", "hello1", "hello2", "hello3", "hello4", "hello5" };
-    for (const auto& el : vec)
+    for (const auto& el : cont)
     {
         std::cout << el << ' ';
     }
     std::cout << std::endl;
-    }
+}
+
+
+int main()
+{
+    custom::vector<std::string> vec{ "hello", "world", "new" };
+    Show_Cont(vec);
+    
+    auto v1{ std::move(vec) };
+    Show_Cont(v1);
+    
+    std::cout << std::format("vec_cap: {} - vec_size: {}\n", vec.capacity(), vec.size());
+    vec.push_back("hello world how are you");
+    Show_Cont(vec);
+    std::cout << std::format("vec cap: {} - vec size: {}\n", vec.capacity(), vec.size());
+
+
 
     return 0;
 }

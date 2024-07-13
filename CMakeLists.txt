@@ -29,7 +29,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_compile_options(-Wall -Wextra -O0)
+add_compile_options(-g -Wall -Wextra -O0 -fsanitize=address,leak,undefined)
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
