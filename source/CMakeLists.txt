@@ -26,3 +26,4 @@ set(SOURCES main.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME} PUBLIC my-vector)
+target_link_libraries(${PROJECT_NAME} PRIVATE -fsanitize=address,leak,undefined)

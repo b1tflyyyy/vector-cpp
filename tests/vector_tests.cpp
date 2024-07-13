@@ -185,7 +185,7 @@ TEST(vector, move_ctor)
     ASSERT_EQ(b.capacity(), a_cp);
     ASSERT_EQ(std::data(b), a_ptr);
     ASSERT_EQ(0, a.size());
-    ASSERT_EQ(2, a.capacity());
+    ASSERT_EQ(0, a.capacity());
     ASSERT_NE(std::data(a), std::data(b));
 
     // move assignment ctor
@@ -201,7 +201,7 @@ TEST(vector, move_ctor)
     ASSERT_EQ(v2.capacity(), v_cp);
     ASSERT_EQ(std::data(v2), v_ptr);
     ASSERT_EQ(0, v1.size());
-    ASSERT_EQ(2, v1.capacity());
+    ASSERT_EQ(0, v1.capacity());
     ASSERT_NE(std::data(v1), std::data(v2));
 
     custom::vector<int> v3{ 1, 2, 3, 4, 5, 6, 7 };
