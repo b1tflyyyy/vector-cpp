@@ -42,8 +42,8 @@ namespace custom
         using reference = value_type&;
         using const_reference = const value_type&;
         using allocator_traits = std::allocator_traits<Alloc>;
-        using pointer = allocator_traits::pointer;
-        using const_pointer = allocator_traits::const_pointer;
+        using pointer = typename allocator_traits::pointer;
+        using const_pointer = typename allocator_traits::const_pointer;
     
     public:
         // ----------------------------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ namespace custom
             using iterator_category = std::forward_iterator_tag;
             using difference_type = std::ptrdiff_t;
             using value_type = T;
-            using pointer = allocator_traits::pointer;
+            using pointer = typename allocator_traits::pointer;
             using reference = value_type&;
 
         public:    
@@ -182,7 +182,6 @@ namespace custom
             other.Size = 0;
             other.Capacity = 0;
             other.Buffer = nullptr;
-            other.reserve(2); // TODO: think about it
         }
 
         // ---------------------------------------------------------------------------------------------------------------------- 
@@ -202,7 +201,6 @@ namespace custom
             other.Size = 0;
             other.Capacity = 0;
             other.Buffer = nullptr;
-            other.reserve(2); // TODO: think about it
 
             return *this;
         }
@@ -290,7 +288,7 @@ namespace custom
         {
             if (Size == Capacity)
             {
-                this->reserve(Capacity * 2);
+                this->reserve(!Capacity ? 2 : Capacity * 2);
             }
 
             allocator_traits::construct(Allocator, Buffer + Size, value);
@@ -302,7 +300,7 @@ namespace custom
         {
             if (Size == Capacity)
             {
-                this->reserve(Capacity * 2);
+                this->reserve(!Capacity ? 2 : Capacity * 2);
             }
 
             allocator_traits::construct(Allocator, Buffer + Size, std::move(value));
@@ -315,7 +313,7 @@ namespace custom
         {
             if (Size == Capacity)
             {
-                this->reserve(Capacity * 2);
+                this->reserve(!Capacity ? 2 : Capacity * 2);
             }
 
             allocator_traits::construct(Allocator, Buffer + Size, std::forward<Args>(args)...);
@@ -343,7 +341,7 @@ namespace custom
 
             if (new_size >= Capacity)
             {
-                this->reserve(Capacity *  2);
+                this->reserve(!Capacity ? 2 : Capacity * 2);
             }
             
             for (std::size_t i{ Size }; i < new_size; ++i)
