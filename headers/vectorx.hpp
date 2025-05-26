@@ -28,340 +28,108 @@
 #include <iterator>
 #include <memory>
 #include <initializer_list>
+#include <utility>
 
-namespace custom 
+namespace vectorx 
 {
-    template <typename T, typename Alloc = std::allocator<T>>
-    class vector
+    namespace detail
     {
-    public:
-        using value_type = T;
-        using allocator_type = Alloc;
-        using size_type = std::size_t;
-        using difference_type = std::ptrdiff_t;
-        using reference = value_type&;
-        using const_reference = const value_type&;
-        using allocator_traits = std::allocator_traits<Alloc>;
-        using pointer = typename allocator_traits::pointer;
-        using const_pointer = typename allocator_traits::const_pointer;
-    
-    public:
-        // ----------------------------------------------------------------------------------------------------------------------
-        class iterator
+        template <typename T, typename Alloc = std::allocator<T>>
+        class Buffer
         {
         public:
-            using iterator_category = std::forward_iterator_tag;
-            using difference_type = std::ptrdiff_t;
-            using value_type = T;
-            using pointer = typename allocator_traits::pointer;
-            using reference = value_type&;
+            using alloc_traits = std::allocator_traits<Alloc>;
 
-        public:    
-            // ----------------------------------------------------------------------------------------------------------------------
-            explicit iterator(pointer ptr) :
-                Pointer{ ptr }
+        public:
+            explicit Buffer(const Alloc& alloc = Alloc{}) 
+                : mAlloc{ alloc }
+                , mBuffer{ nullptr }
+                , mCapacity{}
             { }
 
-            ~iterator() = default;
+            explicit Buffer(std::size_t capacity, const Alloc& alloc = Alloc{}) 
+                : mAlloc{ alloc }
+                , mBuffer{ alloc_traits::allocate(mAlloc, capacity) }
+                , mCapacity{ capacity }
+            { }
 
-            // ----------------------------------------------------------------------------------------------------------------------
-            reference operator*() const
-            {
-                return *Pointer;
-            }
+            Buffer(const Buffer& rhs) 
+                : mAlloc{ rhs.mAlloc }
+                , mBuffer{ alloc_traits::allocate(mAlloc, rhs.mCapacity) }
+                , mCapacity{ rhs.mCapacity }
+            { }
 
-            // ----------------------------------------------------------------------------------------------------------------------
-            pointer operator->() 
-            {
-                return Pointer;
-            }
+            Buffer(Buffer&& rhs) noexcept 
+                : mAlloc{ rhs.mAlloc }
+                , mBuffer{ std::exchange(rhs.mBuffer, nullptr) }
+                , mCapacity{ std::exchange(rhs.mCapacity, 0) }
+            { }
 
-            // ----------------------------------------------------------------------------------------------------------------------
-            iterator& operator++()
+            Buffer& operator=(const Buffer& rhs)
             {
-                ++Pointer;
+                if (this != &rhs)
+                {
+                    Buffer copy{ rhs };
+                    swap(*this, copy);
+                }
+
                 return *this;
             }
 
-            // ----------------------------------------------------------------------------------------------------------------------
-            iterator operator++(std::int32_t)
+            Buffer& operator=(Buffer&& rhs) noexcept
             {
-                iterator tmp{ *this };
-                ++(*this);
+                if (this != &rhs)
+                {
+                    auto old_alloc{ mAlloc };
+                    mAlloc = rhs.mAlloc;
+                    
+                    alloc_traits::deallocate(old_alloc, mBuffer, mCapacity);
 
-                return tmp;
+                    mBuffer = std::exchange(rhs.mBuffer, nullptr); 
+                    mCapacity = std::exchange(rhs.mCapacity, 0);
+                }
+
+                return *this;
             }
 
-            // ----------------------------------------------------------------------------------------------------------------------
-            bool operator==(const iterator& other) noexcept
+            ~Buffer() noexcept
             {
-                return Pointer == other.Pointer;
+                if (mCapacity != 0 && mBuffer != nullptr)
+                {
+                    alloc_traits::deallocate(mAlloc, mBuffer, mCapacity);
+                }
             }
 
-            // ----------------------------------------------------------------------------------------------------------------------
-            bool operator!=(const iterator& other) noexcept
+            T* data(std::size_t offset = 0) noexcept
             {
-                return Pointer != other.Pointer;
+                return mBuffer + offset;
+            }
+
+            const T* data(std::size_t offset = 0) const noexcept
+            {
+                return mBuffer + offset;
+            }
+
+            std::size_t capacity() const noexcept
+            {
+                return mCapacity;
+            }
+
+            friend void swap(Buffer& lhs, Buffer& rhs) noexcept
+            {
+                using std::swap;
+
+                swap(lhs.mAlloc, rhs.mAlloc);
+                swap(lhs.mBuffer, rhs.mBuffer);
+                swap(lhs.mCapacity, rhs.mCapacity);
             }
 
         private:
-            pointer Pointer;
+            Alloc mAlloc;
+            
+            T* mBuffer;
+            std::size_t mCapacity;
         };
+    } // namespace detail
 
-    public:
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr vector() noexcept(noexcept(Alloc())) : 
-            Capacity{ 2 }, Size{}, Buffer{ nullptr }
-        { 
-            Buffer = allocator_traits::allocate(Allocator, Capacity);
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        explicit vector(size_type count, const_reference value, const Alloc& alloc = Alloc()) :
-            Capacity{ count * 2 }, Size{ count }, Allocator{ alloc }
-        { 
-            Buffer = allocator_traits::allocate(Allocator, Capacity);
-            for (std::size_t i{}; i < Size; ++i)
-            {
-                allocator_traits::construct(Allocator, Buffer + i, value);
-            }
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr vector(std::initializer_list<value_type> list, const Alloc& alloc = Alloc()) :
-            Capacity{ list.size() * 2 }, Size{ list.size() }, Allocator{ alloc }
-        {
-            Buffer = allocator_traits::allocate(Allocator, Capacity);
-            std::uninitialized_copy(std::begin(list), std::end(list), Buffer);
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        vector(const vector& other) :
-            Capacity{ other.Capacity }, Size{ other.Size }, Allocator{ other.Allocator }
-        {
-            Buffer = allocator_traits::allocate(Allocator, Capacity);
-            for (std::size_t i{}; i < Size; ++i)
-            {
-                allocator_traits::construct(Allocator, Buffer + i, other.Buffer[i]);
-            }
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        vector& operator=(const vector& other) 
-        {
-            if (this == &other)
-            {
-                return *this;
-            }
-
-            if (Capacity < other.Size)
-            {
-                this->~vector();
-                Buffer = allocator_traits::allocate(Allocator, other.Capacity);
-
-                Capacity = other.Capacity;
-            }
-
-            Size = other.Size;
-            for (std::size_t i{}; i < Size; ++i)
-            {
-                allocator_traits::construct(Allocator, Buffer + i, other.Buffer[i]);
-            }
-
-            return *this;
-        } 
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr vector(vector&& other) noexcept
-        {
-            Size = other.Size;
-            Capacity = other.Capacity;
-            Buffer = other.Buffer;
-            Allocator = std::move(other.Allocator);
-
-            other.Size = 0;
-            other.Capacity = 0;
-            other.Buffer = nullptr;
-        }
-
-        // ---------------------------------------------------------------------------------------------------------------------- 
-        vector& operator=(vector&& other) noexcept(allocator_traits::propagate_on_container_move_assignment::value ||
-                                                   allocator_traits::is_always_equal::value)
-        {
-            if (!this->is_empty())
-            {
-                this->~vector();
-            }
-
-            Size = other.Size;
-            Capacity = other.Capacity;
-            Buffer = other.Buffer;
-            Allocator = std::move(other.Allocator);
-
-            other.Size = 0;
-            other.Capacity = 0;
-            other.Buffer = nullptr;
-
-            return *this;
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        ~vector() noexcept
-        {
-            for (std::size_t i{}; i < Size; ++i)
-            {
-                allocator_traits::destroy(Allocator, Buffer + i);
-            }
-
-            allocator_traits::deallocate(Allocator, Buffer, Capacity);
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr reference operator[](size_type idx)
-        {
-            return Buffer[idx];
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr const_reference operator[](size_type idx) const
-        {
-            return Buffer[idx];
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr pointer data() const noexcept
-        {
-            return Buffer;
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr bool is_empty() const noexcept
-        {
-            return !Size;
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr size_type size() const noexcept
-        {
-            return Size;
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr size_type capacity() const noexcept
-        {
-            return Capacity;
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr iterator begin() noexcept
-        {
-            return iterator{ Buffer };
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr iterator end() noexcept
-        {
-            return iterator{ Buffer + Size };
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr void reserve(std::size_t new_capacity) 
-        {
-            if (new_capacity <= Capacity)
-            {
-                return;
-            }
-
-            pointer new_buffer{ allocator_traits::allocate(Allocator, new_capacity) };
-            for (std::size_t i{}; i < Size; ++i)
-            {
-                allocator_traits::construct(Allocator, new_buffer + i, std::move(Buffer[i]));
-            }
-
-            this->~vector();
-            Buffer = new_buffer;
-            Capacity = new_capacity;
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr void push_back(const_reference value)
-        {
-            if (Size == Capacity)
-            {
-                this->reserve(!Capacity ? 2 : Capacity * 2);
-            }
-
-            allocator_traits::construct(Allocator, Buffer + Size, value);
-            ++Size;
-        } 
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr void push_back(value_type&& value)
-        {
-            if (Size == Capacity)
-            {
-                this->reserve(!Capacity ? 2 : Capacity * 2);
-            }
-
-            allocator_traits::construct(Allocator, Buffer + Size, std::move(value));
-            ++Size;
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        template <typename... Args>
-        constexpr reference emplace_back(Args&&... args)
-        {
-            if (Size == Capacity)
-            {
-                this->reserve(!Capacity ? 2 : Capacity * 2);
-            }
-
-            allocator_traits::construct(Allocator, Buffer + Size, std::forward<Args>(args)...);
-            return *(Buffer + Size++);
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------
-        constexpr void resize(size_type new_size)
-        {
-            if (new_size == Size)
-            {
-                return;
-            }
-
-            if (Size > new_size)
-            {
-                for (std::size_t i{ new_size }; i < Size; ++i)
-                {
-                    allocator_traits::destroy(Allocator, Buffer + i);
-                }
-
-                Size = new_size;
-                return;
-            }
-
-            if (new_size >= Capacity)
-            {
-                this->reserve(!Capacity ? 2 : Capacity * 2);
-            }
-            
-            for (std::size_t i{ Size }; i < new_size; ++i)
-            {
-                allocator_traits::construct(Allocator, Buffer + i, value_type{});
-            }
-            
-            Size = new_size;
-        }
-
-    private:
-        std::size_t Capacity;
-        std::size_t Size;
-        pointer Buffer;
-        Alloc Allocator;    
-    };
-
-    template <>
-    class vector<void>
-    {
-
-    };
-} // custom
+} // namespace vectorx

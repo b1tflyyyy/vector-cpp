@@ -31,5 +31,5 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(-Wall -Wextra)
 
-add_subdirectory(googletest)
 add_subdirectory(tests)
+add_subdirectory(googletest)
