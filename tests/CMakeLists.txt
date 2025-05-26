@@ -22,9 +22,15 @@
 
 cmake_minimum_required(VERSION 3.28)
 
-project(Tests LANGUAGES C CXX)
+project(tests LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+file(GLOB_RECURSE TESTS ${CMAKE_CURRENT_SOURCE_DIR}/*pass.cpp)
+add_executable(${PROJECT_NAME} ${TESTS})
 
+add_compile_options(-Wall -Wextra -fsanitize=address,leak,undefined)
 
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/source)
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    GTest::gtest
+    -fsanitize=address,leak,undefined
+)
