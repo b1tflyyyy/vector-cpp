@@ -1,0 +1,31 @@
+name: vectorx ubuntu tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository with submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      run: ninja
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build/tests
+      run: ./tests
