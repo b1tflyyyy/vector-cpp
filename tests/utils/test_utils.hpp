@@ -197,4 +197,83 @@ namespace test_utils
             bool& mCanThrow;
         };
     }
+
+    namespace thr_object
+    {
+        enum class ThrowPolicy
+        {
+            ControlThrow,
+            ThrowOnCopy,
+            NoThrow
+        };
+
+        struct ObjectStats
+        {
+            friend std::ostream& operator<<(std::ostream& os, const ObjectStats& stats)
+            {
+                os << std::format("[object stats -> ctor: {}, dtor: {}, copy: {}]", stats.CtorCounter, stats.DtorCounter, stats.CopyCounter);
+                return os;
+            }
+
+            std::size_t CtorCounter;
+            std::size_t DtorCounter;
+            std::size_t CopyCounter;
+        };
+
+        struct ThrowObject
+        {
+            ThrowObject(ObjectStats& stats, ThrowPolicy policy, bool& can_throw, std::int32_t magic_value = 0) 
+                : mPolicy{ policy }
+                , mStats{ stats }
+                , mCanThrow{ can_throw }
+                , mMagicValue{ magic_value }
+            { 
+                ++mStats.CtorCounter;
+            }
+
+            ThrowObject(const ThrowObject& rhs) 
+                : mPolicy{ rhs.mPolicy }
+                , mStats{ rhs.mStats }
+                , mCanThrow{ rhs.mCanThrow }
+                , mMagicValue{ rhs.mMagicValue }
+            {
+                if (mPolicy == ThrowPolicy::ThrowOnCopy && mCanThrow)
+                {
+                    throw std::runtime_error{ "" };
+                }
+
+                ++mStats.CopyCounter;
+            }
+
+            ThrowObject& operator=(const ThrowObject& rhs)
+            {
+                if (mPolicy == ThrowPolicy::ThrowOnCopy && mCanThrow)
+                {
+                    throw std::runtime_error{ "" };
+                }
+
+                if (this != &rhs)
+                {
+                    mCanThrow = rhs.mCanThrow;
+                    mMagicValue = rhs.mMagicValue;
+                    mPolicy = rhs.mPolicy;
+
+                    mStats = rhs.mStats;
+                    ++mStats.CopyCounter;
+                }
+
+                return *this;
+            }
+
+            ~ThrowObject() noexcept
+            {
+                ++mStats.DtorCounter;
+            }
+
+            ThrowPolicy mPolicy;
+            ObjectStats& mStats;
+            bool& mCanThrow;
+            std::int32_t mMagicValue;
+        };
+    }
 }
