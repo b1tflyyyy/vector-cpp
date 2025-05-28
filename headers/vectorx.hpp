@@ -227,7 +227,7 @@ namespace vectorx
         }
 
         // Strong
-        void push_back(const T& value)
+        constexpr void push_back(const T& value)
         {
             if (auto cap{ mBuffer.capacity() }; mSize == cap)
             {
@@ -259,7 +259,7 @@ namespace vectorx
         }
 
         // Strong
-        void push_back(T&& value)
+        constexpr void push_back(T&& value)
         {
             if (auto cap{ mBuffer.capacity() }; mSize == cap)
             {
@@ -288,6 +288,39 @@ namespace vectorx
             }
 
             ++mSize;
+        }
+
+        template <typename... Args>
+        constexpr reference emplace_back(Args&&... args)
+        {
+            if (auto cap{ mBuffer.capacity() }; mSize == cap)
+            {
+                cap = (!cap ? 2u : cap * 2);
+
+                decltype(mBuffer) new_buffer{ cap }; // without alloc copy
+                std::uninitialized_copy_n(std::data(mBuffer), mSize, std::data(new_buffer));
+
+                try 
+                {
+                    auto* ptr{ new_buffer.data(mSize) };
+                    std::construct_at(ptr, std::forward<Args>(args)...);
+                }
+                catch (...)
+                {
+                    std::destroy_n(std::data(new_buffer), mSize);
+                    throw;
+                }
+
+                swap(mBuffer, new_buffer);
+            }
+            else 
+            {
+                auto* ptr{ mBuffer.data(mSize) };
+                std::construct_at(ptr, std::forward<Args>(args)...);
+            }
+
+            ++mSize;
+            return *mBuffer.data(mSize - 1);
         }
 
         friend bool operator==(const vector& lhs, const vector& rhs) noexcept
