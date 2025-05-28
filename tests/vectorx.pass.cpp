@@ -26,6 +26,7 @@
 #include "utils/test_utils.hpp"
 
 using namespace test_utils::thr_object;
+using namespace test_utils::nothrow_object;
 
 TEST(VectorX, CtorNothrow)
 {
@@ -59,6 +60,8 @@ TEST(VectorX, CtorThrow)
                 ThrowObject{ stats_4, ThrowPolicy::ThrowOnCopy, can_throw_4 }, 
             } 
         };
+
+        FAIL() << "exception expected";
     }
     catch (const std::runtime_error& e)
     {
@@ -124,6 +127,7 @@ TEST(VectorX, CopyCtorThrow)
     {
         can_throwa_4 = true;
         vecb = veca;
+        FAIL() << "exception expected";
     }
     catch (const std::runtime_error& e)
     {
@@ -207,6 +211,7 @@ TEST(VectorX, PushBackThrow)
         try 
         {
             vec.push_back(obj3);
+            FAIL() << "exception expected";
         }
         catch (const std::runtime_error&) 
         {
@@ -257,6 +262,7 @@ TEST(VectorX, ReserveCopyThrow)
     try 
     {
         vec.reserve(128);
+        FAIL() << "exception expected";
     }
     catch (const std::runtime_error&) 
     {
@@ -286,3 +292,196 @@ TEST(VectorX, equal_operator)
     EXPECT_TRUE(a != c);
 } 
 
+TEST(VectorX, EmplaceBackNoReallocThrow) 
+{
+    ObjectStats stats_1{}; 
+    bool can_throw_1{ false };
+
+    ThrowObject obj_1{ stats_1, ThrowPolicy::ThrowOnCopy, can_throw_1, 100 };
+
+    vectorx::vector<ThrowObject> vec{};
+    vec.reserve(2);
+    vec.emplace_back(obj_1); 
+
+    can_throw_1 = true;
+
+    auto old_data{ vec.data() };
+
+    try 
+    {
+        vec.emplace_back(obj_1);
+        FAIL() << "exception expected";
+    } 
+    catch (const std::runtime_error& e) 
+    {
+        EXPECT_EQ(stats_1.CtorCounter, 1);
+        EXPECT_EQ(stats_1.CopyCounter, 1);
+        EXPECT_EQ(stats_1.DtorCounter, 0);
+    }
+
+    EXPECT_EQ(vec.size(), 1);
+    EXPECT_EQ(vec.data(), old_data);
+    EXPECT_EQ(vec[0].mMagicValue, 100);
+}
+
+TEST(VectorX, EmplaceBackReallocThrow) 
+{
+    ObjectStats stats_1{}; 
+    ObjectStats stats_2{}; 
+
+    bool can_throw_1{ false };
+    bool can_throw_2{ false };
+
+    ThrowObject obj1{ stats_1, ThrowPolicy::NoThrow,     can_throw_1, 10 };
+    ThrowObject obj2{ stats_2, ThrowPolicy::ThrowOnCopy, can_throw_2, 20 };
+
+    vectorx::vector<ThrowObject> vec;
+    
+    vec.reserve(1);
+    vec.emplace_back(obj1);
+
+    can_throw_2 = true;
+    auto old_data = vec.data();
+
+    try 
+    {
+        vec.emplace_back(obj2);
+        FAIL() << "exception expected";
+    } 
+    catch (const std::runtime_error&) 
+    { 
+        EXPECT_EQ(stats_1.CtorCounter, 1);
+        EXPECT_EQ(stats_1.CopyCounter, 2);
+        EXPECT_EQ(stats_1.DtorCounter, 1);
+    }
+
+    EXPECT_EQ(vec.size(), 1);
+    EXPECT_EQ(vec.capacity(), 1);
+    EXPECT_EQ(vec.data(), old_data);
+    EXPECT_EQ(vec[0].mMagicValue, 10);
+}
+
+TEST(VectorX, NoThrowPushBack)
+{
+    vectorx::vector<int> vec_1{};
+
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        vec_1.push_back(i);
+    }
+
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        EXPECT_EQ(vec_1[i], i);
+    }
+
+    EXPECT_EQ(std::size(vec_1), 1'000);
+    EXPECT_FALSE(std::empty(vec_1));
+    EXPECT_NE(std::data(vec_1), nullptr);
+}
+
+TEST(VectorX, NoThrowCopyCtor)
+{
+    vectorx::vector<int> vec_1{};
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        vec_1.push_back(i);
+    }
+
+    auto vec_2{ vec_1 };
+
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        EXPECT_EQ(vec_1[i], vec_2[i]);
+        EXPECT_NE(&vec_1[i], &vec_2[i]);
+    }
+
+    EXPECT_EQ(std::size(vec_1), 1'000);
+    EXPECT_FALSE(std::empty(vec_1));
+    EXPECT_NE(std::data(vec_1), nullptr);
+
+    EXPECT_EQ(std::size(vec_2), 1'000);
+    EXPECT_FALSE(std::empty(vec_2));
+    EXPECT_NE(std::data(vec_2), nullptr);
+}
+
+TEST(VectorX, NoThrowCopyAssignment)
+{
+    vectorx::vector<int> vec_1{};
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        vec_1.push_back(i);
+    }
+
+    vectorx::vector<int> vec_2{};
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        vec_2.push_back(i * 2);
+    }
+
+    vec_1 = vec_2;
+
+    for (std::size_t i{}; i < 1'000; ++i)
+    {
+        EXPECT_EQ(vec_1[i], vec_2[i]);
+        EXPECT_NE(&vec_1[i], &vec_2[i]);
+    }
+
+    EXPECT_EQ(std::size(vec_1), 1'000);
+    EXPECT_FALSE(std::empty(vec_1));
+    EXPECT_NE(std::data(vec_1), nullptr);
+
+    EXPECT_EQ(std::size(vec_2), 1'000);
+    EXPECT_FALSE(std::empty(vec_2));
+    EXPECT_NE(std::data(vec_2), nullptr);
+}
+
+TEST(VectorX, NoThrowReserve)
+{
+    vectorx::vector<int> vec{ 0, 1, 2, 3, 4, 5, 6 };
+    vec.reserve(128);
+
+    for (std::size_t i{}; i < 7; ++i)
+    {
+        ASSERT_EQ(vec[i], i);
+    }
+
+    ASSERT_EQ(std::size(vec), 7);
+    ASSERT_EQ(vec.capacity(), 128);
+}
+
+// maybe rewrite
+TEST(VectorX, ComparisonWithStdVector)
+{
+    NothrowObject obj_a{};
+    NothrowObject obj_b{};
+    NothrowObject obj_c{};
+
+    NothrowObject std_obj_a{};
+    NothrowObject std_obj_b{};
+    NothrowObject std_obj_c{};
+
+    vectorx::vector<NothrowObject> vec{};
+    std::vector<NothrowObject> std_vec{};
+
+    vec.push_back(obj_a);
+    std_vec.push_back(std_obj_a);
+
+    EXPECT_EQ(vec[0], std_vec[0]);
+    EXPECT_EQ(std::size(vec), std::size(std_vec));
+    std::cout << vec[0] << '\n' << std_vec[0] << '\n';
+
+    vec.push_back(obj_b);
+    std_vec.push_back(std_obj_b); 
+
+    EXPECT_EQ(vec[1], std_vec[1]);
+    EXPECT_EQ(std::size(vec), std::size(std_vec));
+    std::cout << vec[1] << '\n' << std_vec[1] << '\n';
+
+    vec.push_back(obj_c);
+    std_vec.push_back(std_obj_c); 
+
+    EXPECT_EQ(vec[2], std_vec[2]);
+    EXPECT_EQ(std::size(vec), std::size(std_vec));
+    std::cout << vec[2] << '\n' << std_vec[2] << '\n';
+}

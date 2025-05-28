@@ -196,7 +196,7 @@ namespace test_utils
             AllocStats& mStats;
             bool& mCanThrow;
         };
-    }
+    } // namespace thr_alloc
 
     namespace thr_object
     {
@@ -275,5 +275,56 @@ namespace test_utils
             bool& mCanThrow;
             std::int32_t mMagicValue;
         };
-    }
+    } // namespace thr_object
+
+    namespace nothrow_object
+    {
+        struct NothrowObject
+        {
+            NothrowObject() : CopyCounter{ 1 } {};
+
+            NothrowObject(const NothrowObject& rhs) : CtorCounter{ rhs.CopyCounter + 1 } {}
+            NothrowObject& operator=(const NothrowObject& rhs)
+            {
+                if (this != &rhs)
+                {
+                    CopyCounter = rhs.CopyCounter + 1;
+                }
+                
+                return *this;
+            }  
+
+            NothrowObject(NothrowObject&& rhs) noexcept : MoveCounter{ rhs.MoveCounter + 1 } {}
+            NothrowObject& operator=(NothrowObject&& rhs) noexcept
+            {
+                if (this != &rhs)
+                {   
+                    MoveCounter = rhs.MoveCounter + 1;
+                }
+
+                return *this;
+            }
+
+            ~NothrowObject() noexcept { ++DtorCounter; }
+
+            friend std::ostream& operator<<(std::ostream& os, const NothrowObject& nothrow_obj)
+            {
+                os << std::format("[nothrow object -> ctor: {}, copy: {}, move: {}, dtor: {}]", nothrow_obj.CtorCounter, nothrow_obj.CopyCounter, nothrow_obj.MoveCounter, nothrow_obj.DtorCounter);
+                return os;
+            }
+
+            friend bool operator==(const NothrowObject& lhs, const NothrowObject& rhs) noexcept
+            {
+                return    lhs.CtorCounter == rhs.CtorCounter 
+                       && lhs.CopyCounter == rhs.CopyCounter
+                       && lhs.MoveCounter == rhs.MoveCounter
+                       && lhs.DtorCounter == rhs.DtorCounter;
+            }
+
+            std::size_t CtorCounter{};
+            std::size_t CopyCounter{};
+            std::size_t MoveCounter{};
+            std::size_t DtorCounter{};
+        };
+    } // namespace nothrow_object
 }
