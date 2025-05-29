@@ -130,6 +130,15 @@ namespace vectorx
             T* mBuffer;
             std::size_t mCapacity;
         };
+
+        template <typename T>
+        void safe_destroy_n(T* ptr, std::size_t n) noexcept
+        {
+            if (ptr != nullptr && n > 0)
+            {
+                std::destroy_n(ptr, n);
+            }
+        }
     } // namespace detail
 
     template <typename T, typename Alloc = std::allocator<T>>
@@ -193,8 +202,21 @@ namespace vectorx
         // Nothrow
         vector& operator=(vector&& rhs) noexcept
         {
-            mSize = std::exchange(rhs.mSize, 0 );
-            mBuffer = std::move(rhs.mBuffer);
+            if (this != &rhs)
+            {
+                detail::safe_destroy_n(std::data(mBuffer), mSize);
+
+                mSize = std::exchange(rhs.mSize, 0);
+                mBuffer = std::move(rhs.mBuffer);
+            }
+
+            return *this;
+        }
+
+        // Nothrow
+        ~vector() noexcept 
+        {
+            detail::safe_destroy_n(std::data(mBuffer), mSize);
         }
 
         // Nothrow
@@ -224,6 +246,7 @@ namespace vectorx
             std::uninitialized_copy_n(std::data(mBuffer), mSize, std::data(new_buffer));
 
             swap(new_buffer, mBuffer);
+            detail::safe_destroy_n(std::data(new_buffer), mSize); // destroy all of elements in the old buffer [after swap]
         }
 
         // Strong
@@ -243,11 +266,12 @@ namespace vectorx
                 }
                 catch (...)
                 {
-                    std::destroy_n(std::data(new_buffer), mSize);
+                    detail::safe_destroy_n(std::data(new_buffer), mSize);
                     throw;
                 }
 
                 swap(mBuffer, new_buffer);
+                detail::safe_destroy_n(std::data(new_buffer), mSize); // destroy all of elements in the old buffer [after swap]
             }
             else 
             {
@@ -275,11 +299,12 @@ namespace vectorx
                 }
                 catch (...)
                 {
-                    std::destroy_n(std::data(new_buffer), mSize);
+                    detail::safe_destroy_n(std::data(new_buffer), mSize);
                     throw;
                 }
 
                 swap(mBuffer, new_buffer);
+                detail::safe_destroy_n(std::data(new_buffer), mSize); // destroy all of elements in the old buffer [after swap]
             }
             else 
             {
@@ -307,11 +332,12 @@ namespace vectorx
                 }
                 catch (...)
                 {
-                    std::destroy_n(std::data(new_buffer), mSize);
+                    detail::safe_destroy_n(std::data(new_buffer), mSize);
                     throw;
                 }
 
                 swap(mBuffer, new_buffer);
+                detail::safe_destroy_n(std::data(new_buffer), mSize); // destroy all of elements in the old buffer [after swap]
             }
             else 
             {
