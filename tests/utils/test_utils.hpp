@@ -27,6 +27,7 @@
 #include <new>
 #include <iostream>
 #include <format>
+#include <utility>
 
 namespace test_utils
 {
@@ -325,6 +326,32 @@ namespace test_utils
             std::size_t CopyCounter{};
             std::size_t MoveCounter{};
             std::size_t DtorCounter{};
+        };
+
+        struct NothrowObjectWithAllocs
+        {
+            NothrowObjectWithAllocs(std::int32_t magic_value) 
+                : mPtr{ new std::int32_t(magic_value) }
+            { }
+
+            NothrowObjectWithAllocs(const NothrowObjectWithAllocs& rhs)
+                : mPtr{ new std::int32_t(*rhs.mPtr) }
+            { }
+
+            NothrowObjectWithAllocs& operator=(const NothrowObjectWithAllocs&) = delete;
+
+            NothrowObjectWithAllocs(NothrowObjectWithAllocs&& rhs) noexcept 
+                : mPtr{ std::exchange(rhs.mPtr, nullptr) }
+            { }
+
+            NothrowObjectWithAllocs& operator=(NothrowObjectWithAllocs&&) noexcept = delete;
+
+            ~NothrowObjectWithAllocs() noexcept { delete mPtr; }
+
+            std::int32_t value() const noexcept { return *mPtr; }
+
+        private:
+            std::int32_t* mPtr{}; 
         };
     } // namespace nothrow_object
 }

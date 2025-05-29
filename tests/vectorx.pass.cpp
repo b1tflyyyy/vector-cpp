@@ -80,11 +80,6 @@ TEST(VectorX, CtorThrow)
         EXPECT_EQ(stats_4.CtorCounter, 1);
         EXPECT_EQ(stats_4.CopyCounter, 0);
         EXPECT_EQ(stats_4.DtorCounter, 1);
-
-        std::cout << "stats_1 " << stats_1 << '\n';
-        std::cout << "stats_2 " << stats_2 << '\n';
-        std::cout << "stats_3 " << stats_3 << '\n';
-        std::cout << "stats_4 " << stats_4 << '\n';
     }
 }
 
@@ -148,11 +143,6 @@ TEST(VectorX, CopyCtorThrow)
         EXPECT_EQ(statsa_4.CopyCounter, 2);
         EXPECT_EQ(statsa_4.DtorCounter, 1);
 
-        std::cout << "statsa_1 " << statsa_1 << '\n';
-        std::cout << "statsa_2 " << statsa_2 << '\n';
-        std::cout << "statsa_3 " << statsa_3 << '\n';
-        std::cout << "statsa_4 " << statsa_4 << '\n';
-
         // B
         EXPECT_EQ(statsb_1.CtorCounter, 1);
         EXPECT_EQ(statsb_1.CopyCounter, 2);
@@ -169,11 +159,6 @@ TEST(VectorX, CopyCtorThrow)
         EXPECT_EQ(statsb_4.CtorCounter, 1);
         EXPECT_EQ(statsb_4.CopyCounter, 2);
         EXPECT_EQ(statsb_4.DtorCounter, 1);
-
-        std::cout << "statsb_1 " << statsb_1 << '\n';
-        std::cout << "statsb_2 " << statsb_2 << '\n';
-        std::cout << "statsb_3 " << statsb_3 << '\n';
-        std::cout << "statsb_4 " << statsb_4 << '\n';
     }
 
     EXPECT_EQ(veca[0].mMagicValue, 1);
@@ -234,8 +219,8 @@ TEST(VectorX, PushBackThrow)
         EXPECT_EQ(vec[1].mMagicValue, 200);
     }
 
-    EXPECT_EQ(stats1.DtorCounter, 2);
-    EXPECT_EQ(stats2.DtorCounter, 2);
+    EXPECT_EQ(stats1.DtorCounter, 3);
+    EXPECT_EQ(stats2.DtorCounter, 3);
 }
 
 TEST(VectorX, ReserveCopyThrow) 
@@ -450,6 +435,113 @@ TEST(VectorX, NoThrowReserve)
     ASSERT_EQ(vec.capacity(), 128);
 }
 
+TEST(VectorX, NothrowObjectWithAllocsPushBack)
+{
+    vectorx::vector<NothrowObjectWithAllocs> vec{};
+    constexpr std::size_t count{ 100 };
+
+    for (std::size_t i{}; i < count; ++i) 
+    {
+        vec.push_back(NothrowObjectWithAllocs(static_cast<std::int32_t>(i)));
+        
+        EXPECT_EQ(vec.size(), i + 1);
+        EXPECT_NE(vec.data(), nullptr);
+    }
+}
+
+TEST(VectorX, NothrowObjectWithAllocsCopyCtor)
+{
+    vectorx::vector<NothrowObjectWithAllocs> vec_1{};
+    for (std::size_t i{}; i < 50; ++i)
+    {
+        vec_1.push_back(NothrowObjectWithAllocs{ static_cast<std::int32_t>(i) });  
+    } 
+
+    auto vec_2{ vec_1 };
+
+    EXPECT_EQ(std::size(vec_1), std::size(vec_2));
+    EXPECT_NE(std::data(vec_1), std::data(vec_2));
+}
+
+TEST(VectorX, NothrowObjectWithAllocsCopyAssignment)
+{
+    vectorx::vector<NothrowObjectWithAllocs> vec_1{};
+    vectorx::vector<NothrowObjectWithAllocs> vec_2{};
+    for (std::size_t i{}; i < 30; ++i) 
+    {
+        vec_1.push_back(NothrowObjectWithAllocs(static_cast<std::int32_t>(i)));
+        vec_2.push_back(NothrowObjectWithAllocs(static_cast<std::int32_t>(i + 100u)));
+    }
+    
+    vec_1 = vec_2;
+    
+    EXPECT_EQ(std::size(vec_1), std::size(vec_2));
+    EXPECT_NE(std::data(vec_1), std::data(vec_2));
+}
+
+TEST(VectorX, NothrowObjectWithAllocsReserve)
+{
+    vectorx::vector<NothrowObjectWithAllocs> vec{};
+    for (std::size_t i{}; i < 20; ++i)
+    {
+        vec.push_back(NothrowObjectWithAllocs(static_cast<std::int32_t>(i)));
+    } 
+    
+    vec.reserve(200);
+    
+    EXPECT_EQ(std::size(vec), 20);
+    EXPECT_GE(vec.capacity(), 200u);
+    EXPECT_NE(std::data(vec), nullptr);
+}
+
+TEST(VectorX, NothrowObjectWithAllocsMoveCtor)
+{
+    vectorx::vector<NothrowObjectWithAllocs> vec{};
+    for (std::size_t i{}; i < 512; ++i)
+    {
+        vec.push_back(NothrowObjectWithAllocs(static_cast<std::int32_t>(i)));
+    } 
+
+    auto new_vec{ std::move(vec) };
+    for (std::size_t i{}; i < std::size(new_vec); ++i)
+    {
+        EXPECT_EQ(new_vec[i].value(), static_cast<std::int32_t>(i));
+    }
+
+    EXPECT_EQ(std::data(vec), nullptr);
+    EXPECT_EQ(std::size(vec), 0);
+    EXPECT_EQ(vec.capacity(), 0);
+
+    EXPECT_NE(std::data(new_vec), nullptr);
+    EXPECT_EQ(std::size(new_vec), 512);
+}
+
+TEST(VectorX, NothrowObjectWithAllocsMoveAssignment)
+{
+    vectorx::vector<NothrowObjectWithAllocs> vec_1{};
+    vectorx::vector<NothrowObjectWithAllocs> vec_2{};
+    
+    for (std::size_t i{}; i < 512; ++i)
+    {
+        vec_1.push_back(NothrowObjectWithAllocs(static_cast<std::int32_t>(i)));
+        vec_2.push_back(NothrowObjectWithAllocs(static_cast<std::int32_t>(i * 2)));
+    } 
+
+    vec_1 = std::move(vec_2);
+
+    for (std::size_t i{}; i < std::size(vec_1); ++i)
+    {
+        EXPECT_EQ(vec_1[i].value(), static_cast<std::int32_t>(i * 2));
+    }
+
+    EXPECT_EQ(std::data(vec_2), nullptr);
+    EXPECT_EQ(std::size(vec_2), 0);
+    EXPECT_EQ(vec_2.capacity(), 0);
+
+    EXPECT_NE(std::data(vec_1), nullptr);
+    EXPECT_EQ(std::size(vec_1), 512);
+}
+
 // maybe rewrite
 TEST(VectorX, ComparisonWithStdVector)
 {
@@ -469,19 +561,16 @@ TEST(VectorX, ComparisonWithStdVector)
 
     EXPECT_EQ(vec[0], std_vec[0]);
     EXPECT_EQ(std::size(vec), std::size(std_vec));
-    std::cout << vec[0] << '\n' << std_vec[0] << '\n';
 
     vec.push_back(obj_b);
     std_vec.push_back(std_obj_b); 
 
     EXPECT_EQ(vec[1], std_vec[1]);
     EXPECT_EQ(std::size(vec), std::size(std_vec));
-    std::cout << vec[1] << '\n' << std_vec[1] << '\n';
 
     vec.push_back(obj_c);
     std_vec.push_back(std_obj_c); 
 
     EXPECT_EQ(vec[2], std_vec[2]);
     EXPECT_EQ(std::size(vec), std::size(std_vec));
-    std::cout << vec[2] << '\n' << std_vec[2] << '\n';
 }
