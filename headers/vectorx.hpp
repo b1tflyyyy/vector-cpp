@@ -30,6 +30,8 @@
 #include <utility>
 #include <algorithm>
 
+#include <iostream>
+
 namespace vectorx 
 {
     namespace detail
@@ -252,69 +254,16 @@ namespace vectorx
         // Strong
         constexpr void push_back(const T& value)
         {
-            if (auto cap{ mBuffer.capacity() }; mSize == cap)
-            {
-                cap = (!cap ? 2u : cap * 2);
-                
-                decltype(mBuffer) new_buffer{ cap }; // without alloc copy
-                std::uninitialized_copy_n(std::data(mBuffer), mSize, std::data(new_buffer));
-
-                try 
-                {
-                    auto* ptr{ new_buffer.data(mSize) };
-                    std::construct_at(ptr, value);
-                }
-                catch (...)
-                {
-                    detail::safe_destroy_n(std::data(new_buffer), mSize);
-                    throw;
-                }
-
-                swap(mBuffer, new_buffer);
-                detail::safe_destroy_n(std::data(new_buffer), mSize); // destroy all of elements in the old buffer [after swap]
-            }
-            else 
-            {
-                auto* ptr{ mBuffer.data(mSize) };
-                std::construct_at(ptr, value);
-            }
-
-            ++mSize;
+            emplace_back(value);
         }
 
         // Strong
         constexpr void push_back(T&& value)
         {
-            if (auto cap{ mBuffer.capacity() }; mSize == cap)
-            {
-                cap = (!cap ? 2u : cap * 2);
-
-                decltype(mBuffer) new_buffer{ cap }; // without alloc copy
-                std::uninitialized_copy_n(std::data(mBuffer), mSize, std::data(new_buffer));
-
-                try 
-                {
-                    auto* ptr{ new_buffer.data(mSize) };
-                    std::construct_at(ptr, std::move(value));
-                }
-                catch (...)
-                {
-                    detail::safe_destroy_n(std::data(new_buffer), mSize);
-                    throw;
-                }
-
-                swap(mBuffer, new_buffer);
-                detail::safe_destroy_n(std::data(new_buffer), mSize); // destroy all of elements in the old buffer [after swap]
-            }
-            else 
-            {
-                auto* ptr{ mBuffer.data(mSize) };
-                std::construct_at(ptr, std::move(value));
-            }
-
-            ++mSize;
+            emplace_back(std::move(value));
         }
 
+        // Strong
         template <typename... Args>
         constexpr reference emplace_back(Args&&... args)
         {
@@ -347,6 +296,43 @@ namespace vectorx
 
             ++mSize;
             return *mBuffer.data(mSize - 1);
+        }
+
+        // Strong
+        void resize(std::size_t new_sz, const value_type& init_value = T{})
+        {
+            if (new_sz == mSize) { return; }
+
+            if (new_sz < mSize)
+            {
+                const auto diff{ mSize - new_sz };
+                detail::safe_destroy_n(mBuffer.data(new_sz), diff);
+            }
+            else 
+            {
+                decltype(mBuffer) new_buffer{ new_sz * 2 };                
+                std::uninitialized_copy_n(std::data(mBuffer), mSize, std::data(new_buffer));
+
+                std::size_t i{ mSize };
+
+                try 
+                {
+                    for (; i < new_sz; ++i)
+                    {
+                        std::construct_at(new_buffer.data(i), init_value);
+                    }
+                }
+                catch (...)
+                {
+                    detail::safe_destroy_n(std::data(new_buffer), mSize + i - 1);
+                    throw;
+                }
+
+                swap(mBuffer, new_buffer);
+                detail::safe_destroy_n(std::data(mBuffer), mSize);
+            }
+
+            mSize = new_sz;
         }
 
         friend bool operator==(const vector& lhs, const vector& rhs) noexcept
