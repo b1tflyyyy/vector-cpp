@@ -203,7 +203,6 @@ namespace test_utils
     {
         enum class ThrowPolicy
         {
-            ControlThrow,
             ThrowOnCopy,
             NoThrow
         };

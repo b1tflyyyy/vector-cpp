@@ -139,8 +139,6 @@ TEST(BufferTest, ThrowOnAllocation)
         EXPECT_EQ(stats.AllocCounter, 0);
         EXPECT_EQ(stats.DeallocCounter, 0);
         EXPECT_EQ(stats.CopyCounter, 0);
-
-        std::cout << throwing_allocator.mStats << '\n';
     }
 }
 
@@ -161,8 +159,6 @@ TEST(BufferTest, BufferCopyThrowOnCopyAllocator)
         EXPECT_EQ(stats.AllocCounter, 0);
         EXPECT_EQ(stats.DeallocCounter, 0);
         EXPECT_EQ(stats.CopyCounter, 0);
-
-        std::cout << throwing_allocator.mStats << '\n';
     }
 }
 
@@ -186,8 +182,6 @@ TEST(BufferTest, ThrowOnBufferCopyAllocatorCopyException)
         EXPECT_EQ(stats.AllocCounter, 1);
         EXPECT_EQ(stats.DeallocCounter, 1);
         EXPECT_EQ(stats.CopyCounter, 1);
-
-        std::cout << stats << '\n';
     }
 }
 
@@ -211,8 +205,6 @@ TEST(BufferTest, ThrowOnBufferCopyAllocateException)
         EXPECT_EQ(stats.AllocCounter, 1);
         EXPECT_EQ(stats.DeallocCounter, 1);
         EXPECT_EQ(stats.CopyCounter, 2);
-
-        std::cout << stats << '\n';
     }
 }
 

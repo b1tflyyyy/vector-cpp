@@ -542,6 +542,108 @@ TEST(VectorX, NothrowObjectWithAllocsMoveAssignment)
     EXPECT_EQ(std::size(vec_1), 512);
 }
 
+TEST(VectorX, ResizeNoThrow)
+{
+    vectorx::vector<NothrowObjectWithAllocs> vec{};
+    vec.resize(25, NothrowObjectWithAllocs{ 22 });
+
+    for (std::size_t i{}; i < std::size(vec); ++i)
+    {
+        EXPECT_EQ(vec[i].value(), 22);
+    }
+
+    EXPECT_EQ(std::size(vec), 25);
+
+    vec.resize(12, NothrowObjectWithAllocs{ 11 });
+
+    for (std::size_t i{}; i < std::size(vec); ++i)
+    {
+        EXPECT_EQ(vec[i].value(), 22);
+    }
+
+    EXPECT_EQ(std::size(vec), 12);
+}
+
+TEST(VectorX, ResizeThrowOnCopy)
+{
+    ObjectStats stats_1{}; 
+    ObjectStats stats_2{}; 
+
+    bool can_throw_1{ false };
+    bool can_throw_2{ false };
+
+    ThrowObject obj1{ stats_1, ThrowPolicy::NoThrow,     can_throw_1, 10 };
+    ThrowObject obj2{ stats_2, ThrowPolicy::ThrowOnCopy, can_throw_2, 20 };
+
+    vectorx::vector<ThrowObject> vec{ obj1, obj2 };
+    
+    can_throw_2 = true;
+
+    ObjectStats stats_3{}; 
+    bool can_throw_3{ false };
+    ThrowObject obj3{ stats_3, ThrowPolicy::NoThrow, can_throw_3, 0 };
+
+    try
+    {
+        vec.resize(12, obj3);
+        FAIL() << "exception expected";
+    }
+    catch (...)
+    {
+        EXPECT_EQ(stats_1.CtorCounter, 1);
+        EXPECT_EQ(stats_1.CopyCounter, 3);
+        EXPECT_EQ(stats_1.DtorCounter, 2);
+
+        EXPECT_EQ(stats_2.CtorCounter, 1);
+        EXPECT_EQ(stats_2.CopyCounter, 2);
+        EXPECT_EQ(stats_2.DtorCounter, 1);
+    }
+
+    EXPECT_EQ(std::size(vec), 2);
+    
+    EXPECT_EQ(vec[0].mMagicValue, 10);
+    EXPECT_EQ(vec[1].mMagicValue, 20);
+}
+
+TEST(VectorX, ResizeThrowOnConstruct)
+{
+    ObjectStats stats_1{}; 
+    ObjectStats stats_2{}; 
+
+    bool can_throw_1{ false };
+    bool can_throw_2{ false };
+
+    ThrowObject obj1{ stats_1, ThrowPolicy::NoThrow,     can_throw_1, 10 };
+    ThrowObject obj2{ stats_2, ThrowPolicy::NoThrow, can_throw_2, 20 };
+
+    vectorx::vector<ThrowObject> vec{ obj1, obj2 };
+
+    ObjectStats stats_3{}; 
+    bool can_throw_3{ true };
+    ThrowObject obj3{ stats_3, ThrowPolicy::ThrowOnCopy, can_throw_3, 0 };
+
+    try
+    {
+        vec.resize(12, obj3);
+        FAIL() << "exception expected";
+    }
+    catch (...)
+    {
+        EXPECT_EQ(stats_1.CtorCounter, 1);
+        EXPECT_EQ(stats_1.CopyCounter, 3);
+        EXPECT_EQ(stats_1.DtorCounter, 2);
+
+        EXPECT_EQ(stats_2.CtorCounter, 1);
+        EXPECT_EQ(stats_2.CopyCounter, 3);
+        EXPECT_EQ(stats_2.DtorCounter, 2);
+    }
+
+    EXPECT_EQ(std::size(vec), 2);
+    
+    EXPECT_EQ(vec[0].mMagicValue, 10);
+    EXPECT_EQ(vec[1].mMagicValue, 20);
+}
+
 // maybe rewrite
 TEST(VectorX, ComparisonWithStdVector)
 {
