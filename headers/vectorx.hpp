@@ -29,8 +29,8 @@
 #include <initializer_list>
 #include <utility>
 #include <algorithm>
-
-#include <iostream>
+#include <concepts>
+#include <type_traits>
 
 namespace vectorx 
 {
@@ -43,31 +43,37 @@ namespace vectorx
             using alloc_traits = std::allocator_traits<Alloc>;
 
         public:
-            explicit Buffer(const Alloc& alloc = Alloc{}) 
+            constexpr Buffer() 
+                : mAlloc{}
+                , mBuffer{ nullptr }
+                , mCapacity{}
+            { }
+
+            constexpr Buffer(const Alloc& alloc) 
                 : mAlloc{ alloc }
                 , mBuffer{ nullptr }
                 , mCapacity{}
             { }
 
-            explicit Buffer(std::size_t capacity, const Alloc& alloc = Alloc{}) 
+            explicit constexpr Buffer(std::size_t capacity, const Alloc& alloc = Alloc{}) 
                 : mAlloc{ alloc }
                 , mBuffer{ alloc_traits::allocate(mAlloc, capacity) }
                 , mCapacity{ capacity }
             { }
 
-            Buffer(const Buffer& rhs) 
+            constexpr Buffer(const Buffer& rhs) 
                 : mAlloc{ rhs.mAlloc }
                 , mBuffer{ alloc_traits::allocate(mAlloc, rhs.mCapacity) }
                 , mCapacity{ rhs.mCapacity }
             { }
 
-            Buffer(Buffer&& rhs) noexcept 
-                : mAlloc{ rhs.mAlloc }
+            constexpr Buffer(Buffer&& rhs) noexcept 
+                : mAlloc{ std::move(rhs.mAlloc) } // *
                 , mBuffer{ std::exchange(rhs.mBuffer, nullptr) }
                 , mCapacity{ std::exchange(rhs.mCapacity, 0) }
             { }
 
-            Buffer& operator=(const Buffer& rhs)
+            constexpr Buffer& operator=(const Buffer& rhs)
             {
                 if (this != &rhs)
                 {
@@ -78,14 +84,12 @@ namespace vectorx
                 return *this;
             }
 
-            Buffer& operator=(Buffer&& rhs) noexcept
+            constexpr Buffer& operator=(Buffer&& rhs) noexcept
             {
-                if (this != &rhs)
-                {
-                    auto old_alloc{ mAlloc };
-                    mAlloc = rhs.mAlloc;
-                    
-                    alloc_traits::deallocate(old_alloc, mBuffer, mCapacity);
+                if (this != &rhs) // *
+                {   
+                    alloc_traits::deallocate(mAlloc, mBuffer, mCapacity);
+                    mAlloc = std::move(rhs.mAlloc);
 
                     mBuffer = std::exchange(rhs.mBuffer, nullptr); 
                     mCapacity = std::exchange(rhs.mCapacity, 0);
@@ -94,7 +98,7 @@ namespace vectorx
                 return *this;
             }
 
-            ~Buffer() noexcept
+            constexpr ~Buffer() noexcept
             {
                 if (mCapacity != 0 && mBuffer != nullptr)
                 {
@@ -102,12 +106,12 @@ namespace vectorx
                 }
             }
 
-            constexpr T* data(std::size_t offset = 0) noexcept
+            constexpr T* data(std::size_t offset = 0) noexcept // *
             {
                 return mBuffer + offset;
             }
 
-            constexpr const T* data(std::size_t offset = 0) const noexcept
+            constexpr const T* data(std::size_t offset = 0) const noexcept // * constexpr 
             {
                 return mBuffer + offset;
             }
@@ -115,6 +119,11 @@ namespace vectorx
             constexpr std::size_t capacity() const noexcept
             {
                 return mCapacity;
+            }
+
+            constexpr Alloc& get_allocator()
+            {
+                return mAlloc;
             }
 
             friend void swap(Buffer& lhs, Buffer& rhs) noexcept
@@ -133,17 +142,29 @@ namespace vectorx
             std::size_t mCapacity;
         };
 
-        template <typename T>
-        void safe_destroy_n(T* ptr, std::size_t n) noexcept
+        template <typename T, typename... Args>
+        void uninitialized_construct_with_args_n(std::size_t n, T* location, Args&&... args)
         {
-            if (ptr != nullptr && n > 0)
+            std::size_t i{};
+
+            try
             {
-                std::destroy_n(ptr, n);
+                for (; i < n; ++i)
+                {
+                    std::construct_at(location + i, std::forward<Args>(args)...);
+                }
             }
-        }
+            catch (...)
+            {
+                std::destroy_n(location, i);
+                throw;
+            }
+        } 
     } // namespace detail
 
     template <typename T, typename Alloc = std::allocator<T>>
+        requires std::is_nothrow_move_assignable_v<T> &&
+                 std::is_nothrow_move_constructible_v<T>
     class vector
     {
     public:
@@ -156,17 +177,28 @@ namespace vectorx
         using pointer = typename std::allocator_traits<Alloc>::pointer;
         using const_pointer = typename std::allocator_traits<Alloc>::const_pointer;
 
+        using buffer_t = detail::Buffer<T, Alloc>;
+
     public:
+        // Nothrow
+        constexpr vector() = default;
+
         // Nothrow if alloc nothrow
-        vector(const Alloc& alloc = Alloc{})
-            : mSize{}
-            , mBuffer{ alloc }
+        constexpr vector(const Alloc& alloc)
+            : mBuffer{ alloc }
+            , mSize{}
+        { }
+
+        // Strong 
+        constexpr vector(std::size_t capacity, const Alloc& alloc = Alloc{})
+            : mBuffer{ capacity, alloc }
+            , mSize{}
         { }
 
         // Strong
-        vector(std::initializer_list<T> list, const Alloc& alloc = Alloc{}) 
-            : mSize{}
-            , mBuffer{ std::size(list), alloc }
+        constexpr vector(std::initializer_list<T> list, const Alloc& alloc = Alloc{}) 
+            : mBuffer{ std::size(list), alloc }
+            , mSize{}
         {
             const auto sz{ std::size(list) };
 
@@ -175,26 +207,26 @@ namespace vectorx
         }
 
         // Strong
-        vector(const vector& rhs)
-            : mSize{}
-            , mBuffer{ rhs.mBuffer }
+        constexpr vector(const vector& rhs)
+            : mBuffer{ rhs.mBuffer }
+            , mSize{}
         {
             std::uninitialized_copy_n(std::data(rhs.mBuffer), rhs.mSize, std::data(mBuffer));
             mSize = rhs.mSize;
         }
 
         // Nothrow
-        vector(vector&& rhs) noexcept
-            : mSize{ std::exchange(rhs.mSize, 0) }
-            , mBuffer{ std::move(rhs.mBuffer) }
+        constexpr vector(vector&& rhs) noexcept
+            : mBuffer{ std::move(rhs.mBuffer) }
+            , mSize{ std::exchange(rhs.mSize, 0) }
         { }
 
         // Strong
-        vector& operator=(const vector& rhs)
+        constexpr vector& operator=(const vector& rhs)
         {
             if (this != &rhs)
             {
-                vector copy{ rhs };
+                vector copy(rhs);
                 swap(*this, copy);
             }
 
@@ -202,11 +234,11 @@ namespace vectorx
         }
 
         // Nothrow
-        vector& operator=(vector&& rhs) noexcept
+        constexpr vector& operator=(vector&& rhs) noexcept // *
         {
             if (this != &rhs)
             {
-                detail::safe_destroy_n(std::data(mBuffer), mSize);
+                std::destroy_n(std::data(mBuffer), mSize);
 
                 mSize = std::exchange(rhs.mSize, 0);
                 mBuffer = std::move(rhs.mBuffer);
@@ -216,9 +248,9 @@ namespace vectorx
         }
 
         // Nothrow
-        ~vector() noexcept 
+        constexpr ~vector() noexcept 
         {
-            detail::safe_destroy_n(std::data(mBuffer), mSize);
+            std::destroy_n(std::data(mBuffer), mSize);
         }
 
         // Nothrow
@@ -234,21 +266,15 @@ namespace vectorx
         constexpr const_pointer data() const noexcept { return mBuffer.data(); }
 
         // Nothrow
-        constexpr bool empty() const noexcept { return !mSize; }
+        constexpr bool empty() const noexcept { return mSize == 0; }
 
         // Strong
-        void reserve(size_type capacity)
+        constexpr void reserve(size_type capacity)
         {
-            if (mBuffer.capacity() >= capacity)
-            {
-                return;
-            }
+            if (mBuffer.capacity() >= capacity) { return; }
 
-            decltype(mBuffer) new_buffer{ capacity }; // without alloc copy
-            std::uninitialized_copy_n(std::data(mBuffer), mSize, std::data(new_buffer));
-
-            swap(new_buffer, mBuffer);
-            detail::safe_destroy_n(std::data(new_buffer), mSize); // destroy all of elements in the old buffer [after swap]
+            vector copy(capacity, *this);
+            swap(*this, copy);
         }
 
         // Strong
@@ -267,69 +293,53 @@ namespace vectorx
         template <typename... Args>
         constexpr reference emplace_back(Args&&... args)
         {
-            if (auto cap{ mBuffer.capacity() }; mSize == cap)
+            if (auto cap{ capacity() }; cap == mSize)
             {
-                cap = (!cap ? 2u : cap * 2);
+                cap = (cap == 0 ? 1 : cap * 2);
 
-                decltype(mBuffer) new_buffer{ cap }; // without alloc copy
-                std::uninitialized_copy_n(std::data(mBuffer), mSize, std::data(new_buffer));
-
-                try 
-                {
-                    auto* ptr{ new_buffer.data(mSize) };
-                    std::construct_at(ptr, std::forward<Args>(args)...);
-                }
-                catch (...)
-                {
-                    detail::safe_destroy_n(std::data(new_buffer), mSize);
-                    throw;
-                }
-
-                swap(mBuffer, new_buffer);
-                detail::safe_destroy_n(std::data(new_buffer), mSize); // destroy all of elements in the old buffer [after swap]
+                vector copy(cap); 
+                copy.construct_and_swap(*this, std::forward<Args>(args)...);
             }
             else 
             {
-                auto* ptr{ mBuffer.data(mSize) };
-                std::construct_at(ptr, std::forward<Args>(args)...);
+                std::construct_at(mBuffer.data(mSize), std::forward<Args>(args)... );
             }
-
+            
             ++mSize;
             return *mBuffer.data(mSize - 1);
         }
 
         // Strong
-        void resize(std::size_t new_sz, const value_type& init_value = T{})
+        constexpr void resize(std::size_t new_sz)
         {
             if (new_sz == mSize) { return; }
 
             if (new_sz < mSize)
             {
-                const auto diff{ mSize - new_sz };
-                detail::safe_destroy_n(mBuffer.data(new_sz), diff);
+                std::destroy_n(mBuffer.data(new_sz), mSize - new_sz);
             }
             else 
             {
-                decltype(mBuffer) new_buffer{ new_sz * 2 };                
-                std::uninitialized_copy_n(std::data(mBuffer), mSize, std::data(new_buffer));
+                vector copy(new_sz * 2);
+                copy.construct_and_swap_n(*this, new_sz - mSize);
+            }
 
-                std::size_t i{ mSize };
+            mSize = new_sz;
+        }
 
-                try 
-                {
-                    for (; i < new_sz; ++i)
-                    {
-                        std::construct_at(new_buffer.data(i), init_value);
-                    }
-                }
-                catch (...)
-                {
-                    detail::safe_destroy_n(std::data(new_buffer), mSize + i - 1);
-                    throw;
-                }
+        // Strong
+        constexpr void resize(std::size_t new_sz, const value_type& init_value)
+        {
+            if (new_sz == mSize) { return; }
 
-                swap(mBuffer, new_buffer);
-                detail::safe_destroy_n(std::data(mBuffer), mSize);
+            if (new_sz < mSize)
+            {
+                std::destroy_n(mBuffer.data(new_sz), mSize - new_sz);
+            }
+            else 
+            {
+                vector copy(new_sz * 2);
+                copy.construct_and_swap_n(*this, new_sz - mSize, init_value);
             }
 
             mSize = new_sz;
@@ -354,8 +364,68 @@ namespace vectorx
         }
 
     private:
+        constexpr vector(std::size_t capacity, vector& rhs)
+            : mBuffer{ capacity } // move alloc or not ?
+            , mSize{ std::size(rhs) }
+        {
+            std::uninitialized_move_n(std::data(rhs.mBuffer), std::size(rhs), std::data(mBuffer));
+        }
+
+        template <typename... Args> 
+            requires (sizeof...(Args) >= 1) 
+        constexpr void construct_and_swap(vector& other, Args&&... args)
+        {
+            const auto sz{ std::size(other) };
+
+            std::construct_at(mBuffer.data(sz), std::forward<Args>(args)...);
+            std::uninitialized_move_n(std::data(other.mBuffer), sz, std::data(mBuffer));
+    
+            mSize = other.mSize;
+            swap(*this, other);
+        }
+
+        template <typename U = T>
+            requires std::is_trivially_constructible_v<U>
+        constexpr void construct_and_swap(vector& other)
+        {
+            const auto sz{ std::size(other) };
+
+            std::construct_at(mBuffer.data(sz));
+            std::uninitialized_move_n(std::data(other.mBuffer), sz, std::data(mBuffer));
+
+            mSize = other.mSize;
+            swap(*this, other);
+        }
+
+        template <typename... Args>
+            requires (sizeof...(Args) >= 1)
+        constexpr void construct_and_swap_n(vector& other, std::size_t n, Args&&... args)
+        {
+            const auto sz{ std::size(other) };
+
+            detail::uninitialized_construct_with_args_n(n, mBuffer.data(sz), std::forward<Args>(args)...);
+            std::uninitialized_move_n(std::data(other.mBuffer), sz, std::data(mBuffer));
+
+            mSize = other.mSize;
+            swap(*this, other);
+        }
+
+        template <typename U = T>
+            requires std::is_trivially_constructible_v<U> 
+        constexpr void construct_and_swap_n(vector& other, std::size_t n)
+        {
+            const auto sz{ std::size(other) };
+
+            detail::uninitialized_construct_with_args_n(n, mBuffer.data(sz));
+            std::uninitialized_move_n(std::data(other.mBuffer), sz, std::data(mBuffer));
+
+            mSize = other.mSize;
+            swap(*this, other);
+        } 
+
+    private:
+        buffer_t mBuffer;
         size_type mSize;
-        detail::Buffer<T, Alloc> mBuffer;
     };
 
 } // namespace vectorx

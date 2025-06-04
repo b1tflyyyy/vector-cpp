@@ -39,127 +39,105 @@ TEST(VectorX, CtorNothrow)
 
 TEST(VectorX, CtorThrow)
 {
-    ObjectStats stats_1{};
-    ObjectStats stats_2{};
-    ObjectStats stats_3{};
-    ObjectStats stats_4{};
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
 
-    bool can_throw_1{ false };
-    bool can_throw_2{ false };
-    bool can_throw_3{ false };
-    bool can_throw_4{ true };
+    T o1{ false, 0 };
+    T o2{ false, 0 };
+    T o3{ false, 0 };
+    T o4{ true,  0 };
 
     try
     {
-        vectorx::vector<ThrowObject> vec
+        vectorx::vector<T::internal_obj_t> vec
         { 
             { 
-                ThrowObject{ stats_1, ThrowPolicy::NoThrow, can_throw_1 },
-                ThrowObject{ stats_2, ThrowPolicy::NoThrow, can_throw_2},
-                ThrowObject{ stats_3, ThrowPolicy::NoThrow, can_throw_3 },
-                ThrowObject{ stats_4, ThrowPolicy::ThrowOnCopy, can_throw_4 }, 
+                o1.mInternalObject,
+                o2.mInternalObject,
+                o3.mInternalObject,
+                o4.mInternalObject,
             } 
         };
 
         FAIL() << "exception expected";
     }
-    catch (const std::runtime_error& e)
-    {
-        EXPECT_EQ(stats_1.CtorCounter, 1);
-        EXPECT_EQ(stats_1.CopyCounter, 1);
-        EXPECT_EQ(stats_1.DtorCounter, 2);
+    catch (const std::runtime_error& e) {}
 
-        EXPECT_EQ(stats_2.CtorCounter, 1);
-        EXPECT_EQ(stats_2.CopyCounter, 1);
-        EXPECT_EQ(stats_2.DtorCounter, 2);
+    EXPECT_EQ(o1.mStats.CtorCounter, 1);
+    EXPECT_EQ(o1.mStats.CopyCounter, 1);
+    EXPECT_EQ(o1.mStats.DtorCounter, 1);
 
-        EXPECT_EQ(stats_3.CtorCounter, 1);
-        EXPECT_EQ(stats_3.CopyCounter, 1);
-        EXPECT_EQ(stats_3.DtorCounter, 2);
+    EXPECT_EQ(o2.mStats.CtorCounter, 1);
+    EXPECT_EQ(o2.mStats.CopyCounter, 1);
+    EXPECT_EQ(o2.mStats.DtorCounter, 1);
 
-        EXPECT_EQ(stats_4.CtorCounter, 1);
-        EXPECT_EQ(stats_4.CopyCounter, 0);
-        EXPECT_EQ(stats_4.DtorCounter, 1);
-    }
+    EXPECT_EQ(o3.mStats.CtorCounter, 1);
+    EXPECT_EQ(o3.mStats.CopyCounter, 1);
+    EXPECT_EQ(o3.mStats.DtorCounter, 1);
+
+    EXPECT_EQ(o4.mStats.CtorCounter, 1);
+    EXPECT_EQ(o4.mStats.CopyCounter, 0);
+    EXPECT_EQ(o4.mStats.DtorCounter, 0);
 }
 
 TEST(VectorX, CopyCtorThrow)
 {
-    ObjectStats statsa_1{};
-    ObjectStats statsa_2{};
-    ObjectStats statsa_3{};
-    ObjectStats statsa_4{};
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
 
-    ObjectStats statsb_1{};
-    ObjectStats statsb_2{};
-    ObjectStats statsb_3{};
-    ObjectStats statsb_4{};
+    T oa1{ false, 1 };
+    T oa2{ false, 2 };
+    T oa3{ false, 3 };
+    T oa4{ false, 4 };
 
-    bool can_throwa_1{ false };
-    bool can_throwa_2{ false };
-    bool can_throwa_3{ false };
-    bool can_throwa_4{ false };
+    T ob1{ false, 11 };
+    T ob2{ false, 22 };
+    T ob3{ false, 33 };
+    T ob4{ false, 44 };
 
-    bool can_throwb_1{ false };
-    bool can_throwb_2{ false };
-    bool can_throwb_3{ false };
-    bool can_throwb_4{ false };
-
-    ThrowObject obja_1{ statsa_1, ThrowPolicy::NoThrow, can_throwa_1, 1 };
-    ThrowObject obja_2{ statsa_2, ThrowPolicy::NoThrow, can_throwa_2, 2 };
-    ThrowObject obja_3{ statsa_3, ThrowPolicy::NoThrow, can_throwa_3, 3 };
-    ThrowObject obja_4{ statsa_4, ThrowPolicy::ThrowOnCopy, can_throwa_4, 4 };
-
-    ThrowObject objb_1{ statsb_1, ThrowPolicy::NoThrow, can_throwb_1, 11 };
-    ThrowObject objb_2{ statsb_2, ThrowPolicy::NoThrow, can_throwb_2, 22 };
-    ThrowObject objb_3{ statsb_3, ThrowPolicy::NoThrow, can_throwb_3, 33 };
-    ThrowObject objb_4{ statsb_4, ThrowPolicy::NoThrow, can_throwb_4, 44 };
-
-    vectorx::vector<ThrowObject> veca{ obja_1, obja_2, obja_3, obja_4 };
-    vectorx::vector<ThrowObject> vecb{ objb_1, objb_2, objb_3, objb_4 };
+    vectorx::vector<T::internal_obj_t> veca{ oa1.mInternalObject, oa2.mInternalObject, oa3.mInternalObject, oa4.mInternalObject };
+    vectorx::vector<T::internal_obj_t> vecb{ ob1.mInternalObject, ob2.mInternalObject, ob3.mInternalObject, ob4.mInternalObject };
 
     try
     {
-        can_throwa_4 = true;
+        oa4.mCanThrow = true;
         vecb = veca;
+
         FAIL() << "exception expected";
     }
-    catch (const std::runtime_error& e)
-    {
-        // A
-        EXPECT_EQ(statsa_1.CtorCounter, 1);
-        EXPECT_EQ(statsa_1.CopyCounter, 3);
-        EXPECT_EQ(statsa_1.DtorCounter, 2);
+    catch (const std::runtime_error& e) { }
+    
+    // A
+    EXPECT_EQ(oa1.mStats.CtorCounter, 1);
+    EXPECT_EQ(oa1.mStats.CopyCounter, 3);
+    EXPECT_EQ(oa1.mStats.DtorCounter, 2);
 
-        EXPECT_EQ(statsa_2.CtorCounter, 1);
-        EXPECT_EQ(statsa_2.CopyCounter, 3);
-        EXPECT_EQ(statsa_2.DtorCounter, 2);
+    EXPECT_EQ(oa2.mStats.CtorCounter, 1);
+    EXPECT_EQ(oa2.mStats.CopyCounter, 3);
+    EXPECT_EQ(oa2.mStats.DtorCounter, 2);
 
-        EXPECT_EQ(statsa_3.CtorCounter, 1);
-        EXPECT_EQ(statsa_3.CopyCounter, 3);
-        EXPECT_EQ(statsa_3.DtorCounter, 2);
+    EXPECT_EQ(oa3.mStats.CtorCounter, 1);
+    EXPECT_EQ(oa3.mStats.CopyCounter, 3);
+    EXPECT_EQ(oa3.mStats.DtorCounter, 2);
 
-        EXPECT_EQ(statsa_4.CtorCounter, 1);
-        EXPECT_EQ(statsa_4.CopyCounter, 2);
-        EXPECT_EQ(statsa_4.DtorCounter, 1);
+    EXPECT_EQ(oa4.mStats.CtorCounter, 1);
+    EXPECT_EQ(oa4.mStats.CopyCounter, 2);
+    EXPECT_EQ(oa4.mStats.DtorCounter, 1);
 
-        // B
-        EXPECT_EQ(statsb_1.CtorCounter, 1);
-        EXPECT_EQ(statsb_1.CopyCounter, 2);
-        EXPECT_EQ(statsb_1.DtorCounter, 1);
+    // B
+    EXPECT_EQ(ob1.mStats.CtorCounter, 1);
+    EXPECT_EQ(ob1.mStats.CopyCounter, 2);
+    EXPECT_EQ(ob1.mStats.DtorCounter, 1);
 
-        EXPECT_EQ(statsb_2.CtorCounter, 1);
-        EXPECT_EQ(statsb_2.CopyCounter, 2);
-        EXPECT_EQ(statsb_2.DtorCounter, 1);
+    EXPECT_EQ(ob2.mStats.CtorCounter, 1);
+    EXPECT_EQ(ob2.mStats.CopyCounter, 2);
+    EXPECT_EQ(ob2.mStats.DtorCounter, 1);
 
-        EXPECT_EQ(statsb_3.CtorCounter, 1);
-        EXPECT_EQ(statsb_3.CopyCounter, 2);
-        EXPECT_EQ(statsb_3.DtorCounter, 1);
+    EXPECT_EQ(ob3.mStats.CtorCounter, 1);
+    EXPECT_EQ(ob3.mStats.CopyCounter, 2);
+    EXPECT_EQ(ob3.mStats.DtorCounter, 1);
 
-        EXPECT_EQ(statsb_4.CtorCounter, 1);
-        EXPECT_EQ(statsb_4.CopyCounter, 2);
-        EXPECT_EQ(statsb_4.DtorCounter, 1);
-    }
+    EXPECT_EQ(ob4.mStats.CtorCounter, 1);
+    EXPECT_EQ(ob4.mStats.CopyCounter, 2);
+    EXPECT_EQ(ob4.mStats.DtorCounter, 1);
 
     EXPECT_EQ(veca[0].mMagicValue, 1);
     EXPECT_EQ(veca[1].mMagicValue, 2);
@@ -174,98 +152,84 @@ TEST(VectorX, CopyCtorThrow)
 
 TEST(VectorX, PushBackThrow) 
 {
-    ObjectStats stats1{}; 
-    ObjectStats stats2{};
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
     
-    bool can_throw1{ false }; 
-    bool can_throw2{ false };
+    T o1{ false, 1 };
+    T o2{ false, 2 };
+    T o3{ true, 3 };
     
-    {
-        ThrowObject obj1{ stats1, ThrowPolicy::NoThrow, can_throw1, 100 };
-        ThrowObject obj2{ stats2, ThrowPolicy::NoThrow, can_throw2, 200 };
+    vectorx::vector<T::internal_obj_t> vec{};
     
-        vectorx::vector<ThrowObject> vec{};
-
-        vec.push_back(obj1);
-        vec.push_back(obj2);
-
-        ObjectStats stats3{};
-        bool can_throw3{ true };
-        ThrowObject obj3{ stats3, ThrowPolicy::ThrowOnCopy, can_throw3, 300 };
-
-        try 
-        {
-            vec.push_back(obj3);
-            FAIL() << "exception expected";
-        }
-        catch (const std::runtime_error&) 
-        {
-            EXPECT_EQ(stats1.CtorCounter, 1);
-            EXPECT_EQ(stats1.CopyCounter, 2);
-            EXPECT_EQ(stats1.DtorCounter, 1);
-
-            EXPECT_EQ(stats2.CtorCounter, 1);
-            EXPECT_EQ(stats2.CopyCounter, 2);
-            EXPECT_EQ(stats2.DtorCounter, 1);
-
-            EXPECT_EQ(stats3.CtorCounter, 1);
-            EXPECT_EQ(stats3.CopyCounter, 0);
-            EXPECT_EQ(stats3.DtorCounter, 0); // was not constructed via push_back
-        }
-
-        EXPECT_EQ(vec.size(), 2);
-        EXPECT_EQ(vec.capacity(), 2);
-        EXPECT_EQ(vec[0].mMagicValue, 100);
-        EXPECT_EQ(vec[1].mMagicValue, 200);
-    }
-
-    EXPECT_EQ(stats1.DtorCounter, 3);
-    EXPECT_EQ(stats2.DtorCounter, 3);
-}
-
-TEST(VectorX, ReserveCopyThrow) 
-{
-    ObjectStats stats_1{}; 
-    ObjectStats stats_2{}; 
-
-    bool can_throw1{ false };
-    bool can_throw2{ false};
-
-    ThrowObject obj1{ stats_1, ThrowPolicy::NoThrow, can_throw1, 10 };
-    ThrowObject obj2{ stats_2, ThrowPolicy::ThrowOnCopy, can_throw2, 20 };
-
-    vectorx::vector<ThrowObject> vec;
-
-    vec.reserve(2);
-    vec.push_back(obj1);
-    vec.push_back(obj2);
-
-    can_throw2 = true;
-
-    auto* old_data{ vec.data() };
-
+    vec.push_back(o1.mInternalObject);
+    vec.push_back(o2.mInternalObject);
+    
     try 
     {
-        vec.reserve(128);
+        vec.push_back(o3.mInternalObject);
         FAIL() << "exception expected";
     }
-    catch (const std::runtime_error&) 
-    {
-        EXPECT_EQ(stats_1.CtorCounter, 1);
-        EXPECT_EQ(stats_1.CopyCounter, 2);
-        EXPECT_EQ(stats_1.DtorCounter, 1);
+    catch (const std::runtime_error&) {}
+    
+    EXPECT_EQ(o1.mStats.CtorCounter, 1);
+    EXPECT_EQ(o1.mStats.CopyCounter, 1); // was copied via push_back
+    EXPECT_EQ(o1.mStats.MoveCounter, 1); // moved due to reallocs
+    EXPECT_EQ(o1.mStats.DtorCounter, 1); // because of dtor of moved obj
 
-        EXPECT_EQ(stats_2.CtorCounter, 1);        
-        EXPECT_EQ(stats_2.CopyCounter, 1);
-        EXPECT_EQ(stats_2.DtorCounter, 0);    
-    }
+    EXPECT_EQ(o2.mStats.CtorCounter, 1);
+    EXPECT_EQ(o2.mStats.CopyCounter, 1); // was copied via push_back
+    EXPECT_EQ(o2.mStats.MoveCounter, 0); // wasn't moved 
+    EXPECT_EQ(o2.mStats.DtorCounter, 0); // wasn't moved
+
+    EXPECT_EQ(o3.mStats.CtorCounter, 1);
+    EXPECT_EQ(o3.mStats.CopyCounter, 0);
+    EXPECT_EQ(o3.mStats.MoveCounter, 0);
+    EXPECT_EQ(o3.mStats.DtorCounter, 0); // was not constructed via push_back
 
     EXPECT_EQ(vec.size(), 2);
     EXPECT_EQ(vec.capacity(), 2);
-    EXPECT_EQ(vec[0].mMagicValue, 10);
-    EXPECT_EQ(vec[1].mMagicValue, 20);
-    EXPECT_EQ(old_data, vec.data());
+    EXPECT_EQ(vec[0].mMagicValue, 1);
+    EXPECT_EQ(vec[1].mMagicValue, 2);    
 }
+
+// deprecated due to move on reallocs
+// TEST(VectorX, ReserveCopyThrow) 
+// {
+//     using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
+// 
+//     T o1{ false, 1 };
+//     T o2{ false, 2 };
+// 
+//     vectorx::vector<T::internal_obj_t> vec{};
+// 
+//     vec.reserve(2);
+// 
+//     vec.push_back(o1.mInternalObject);
+//     vec.push_back(o2.mInternalObject);
+// 
+//     o2.mCanThrow = true;
+//     auto* old_data{ vec.data() };
+// 
+//     try 
+//     {
+//         vec.reserve(128);
+//         FAIL() << "exception expected";
+//     }
+//     catch (const std::runtime_error&) {}
+//     
+//     EXPECT_EQ(o1.mStats.CtorCounter, 1);
+//     EXPECT_EQ(o1.mStats.CopyCounter, 1);
+//     EXPECT_EQ(o1.mStats.DtorCounter, 0);
+// 
+//     EXPECT_EQ(o2.mStats.CtorCounter, 1);        
+//     EXPECT_EQ(o2.mStats.CopyCounter, 1);
+//     EXPECT_EQ(o2.mStats.DtorCounter, 0);    
+// 
+//     EXPECT_EQ(vec.size(), 2);
+//     EXPECT_EQ(vec.capacity(), 2);
+//     EXPECT_EQ(vec[0].mMagicValue, 1);
+//     EXPECT_EQ(vec[1].mMagicValue, 2);
+//     EXPECT_EQ(old_data, vec.data());
+// }
 
 TEST(VectorX, equal_operator)
 {
@@ -279,71 +243,66 @@ TEST(VectorX, equal_operator)
 
 TEST(VectorX, EmplaceBackNoReallocThrow) 
 {
-    ObjectStats stats_1{}; 
-    bool can_throw_1{ false };
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
+    T o1{ false, 1 };
 
-    ThrowObject obj_1{ stats_1, ThrowPolicy::ThrowOnCopy, can_throw_1, 100 };
-
-    vectorx::vector<ThrowObject> vec{};
+    vectorx::vector<T::internal_obj_t> vec{};
+    
     vec.reserve(2);
-    vec.emplace_back(obj_1); 
+    vec.emplace_back(o1.mInternalObject); 
 
-    can_throw_1 = true;
+    o1.mCanThrow = true;
 
     auto old_data{ vec.data() };
 
     try 
     {
-        vec.emplace_back(obj_1);
+        vec.emplace_back(o1.mInternalObject);
         FAIL() << "exception expected";
     } 
-    catch (const std::runtime_error& e) 
-    {
-        EXPECT_EQ(stats_1.CtorCounter, 1);
-        EXPECT_EQ(stats_1.CopyCounter, 1);
-        EXPECT_EQ(stats_1.DtorCounter, 0);
-    }
+    catch (const std::runtime_error& e) {}
+
+    EXPECT_EQ(o1.mStats.CtorCounter, 1);
+    EXPECT_EQ(o1.mStats.CopyCounter, 1);
+    EXPECT_EQ(o1.mStats.MoveCounter, 0);
+    EXPECT_EQ(o1.mStats.DtorCounter, 0);
 
     EXPECT_EQ(vec.size(), 1);
     EXPECT_EQ(vec.data(), old_data);
-    EXPECT_EQ(vec[0].mMagicValue, 100);
+    EXPECT_EQ(vec[0].mMagicValue, 1);
 }
 
 TEST(VectorX, EmplaceBackReallocThrow) 
 {
-    ObjectStats stats_1{}; 
-    ObjectStats stats_2{}; 
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
 
-    bool can_throw_1{ false };
-    bool can_throw_2{ false };
+    T o1{ false, 1 };
+    T o2{ false, 2 };
 
-    ThrowObject obj1{ stats_1, ThrowPolicy::NoThrow,     can_throw_1, 10 };
-    ThrowObject obj2{ stats_2, ThrowPolicy::ThrowOnCopy, can_throw_2, 20 };
-
-    vectorx::vector<ThrowObject> vec;
+    vectorx::vector<T::internal_obj_t> vec{};
     
     vec.reserve(1);
-    vec.emplace_back(obj1);
+    vec.emplace_back(o1.mInternalObject);
 
-    can_throw_2 = true;
+    o2.mCanThrow = true;
     auto old_data = vec.data();
 
     try 
     {
-        vec.emplace_back(obj2);
+        vec.emplace_back(o2.mInternalObject);
         FAIL() << "exception expected";
     } 
-    catch (const std::runtime_error&) 
-    { 
-        EXPECT_EQ(stats_1.CtorCounter, 1);
-        EXPECT_EQ(stats_1.CopyCounter, 2);
-        EXPECT_EQ(stats_1.DtorCounter, 1);
-    }
+    catch (const std::runtime_error&) {}
+
+    EXPECT_EQ(o1.mStats.CtorCounter, 1);
+    EXPECT_EQ(o1.mStats.CopyCounter, 1);
+    EXPECT_EQ(o1.mStats.MoveCounter, 0);
+    EXPECT_EQ(o1.mStats.DtorCounter, 0);
 
     EXPECT_EQ(vec.size(), 1);
     EXPECT_EQ(vec.capacity(), 1);
     EXPECT_EQ(vec.data(), old_data);
-    EXPECT_EQ(vec[0].mMagicValue, 10);
+    EXPECT_EQ(vec[0].mMagicValue, 1);
 }
 
 TEST(VectorX, NoThrowPushBack)
@@ -566,113 +525,109 @@ TEST(VectorX, ResizeNoThrow)
 
 TEST(VectorX, ResizeThrowOnCopy)
 {
-    ObjectStats stats_1{}; 
-    ObjectStats stats_2{}; 
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
 
-    bool can_throw_1{ false };
-    bool can_throw_2{ false };
+    T o1{ false, 1 };
+    T o2{ false, 2 };
+    T o3{ false, 3 };
 
-    ThrowObject obj1{ stats_1, ThrowPolicy::NoThrow,     can_throw_1, 10 };
-    ThrowObject obj2{ stats_2, ThrowPolicy::ThrowOnCopy, can_throw_2, 20 };
-
-    vectorx::vector<ThrowObject> vec{ obj1, obj2 };
-    
-    can_throw_2 = true;
-
-    ObjectStats stats_3{}; 
-    bool can_throw_3{ false };
-    ThrowObject obj3{ stats_3, ThrowPolicy::NoThrow, can_throw_3, 0 };
+    vectorx::vector<T::internal_obj_t> vec{ o1.mInternalObject, o2.mInternalObject };
+    o3.mCanThrow = true;
 
     try
     {
-        vec.resize(12, obj3);
+        vec.resize(12, o3.mInternalObject);
         FAIL() << "exception expected";
     }
-    catch (...)
-    {
-        EXPECT_EQ(stats_1.CtorCounter, 1);
-        EXPECT_EQ(stats_1.CopyCounter, 3);
-        EXPECT_EQ(stats_1.DtorCounter, 2);
+    catch (const std::runtime_error& e) {}
 
-        EXPECT_EQ(stats_2.CtorCounter, 1);
-        EXPECT_EQ(stats_2.CopyCounter, 2);
-        EXPECT_EQ(stats_2.DtorCounter, 1);
-    }
+    EXPECT_EQ(o1.mStats.CtorCounter, 1);
+    EXPECT_EQ(o1.mStats.CopyCounter, 2);
+    EXPECT_EQ(o1.mStats.MoveCounter, 0);
+    EXPECT_EQ(o1.mStats.DtorCounter, 1);
+
+    EXPECT_EQ(o2.mStats.CtorCounter, 1);
+    EXPECT_EQ(o2.mStats.CopyCounter, 2);
+    EXPECT_EQ(o2.mStats.MoveCounter, 0);
+    EXPECT_EQ(o2.mStats.DtorCounter, 1);
 
     EXPECT_EQ(std::size(vec), 2);
     
-    EXPECT_EQ(vec[0].mMagicValue, 10);
-    EXPECT_EQ(vec[1].mMagicValue, 20);
+    EXPECT_EQ(vec[0].mMagicValue, 1);
+    EXPECT_EQ(vec[1].mMagicValue, 2);
 }
 
-TEST(VectorX, ResizeThrowOnConstruct)
-{
-    ObjectStats stats_1{}; 
-    ObjectStats stats_2{}; 
-
-    bool can_throw_1{ false };
-    bool can_throw_2{ false };
-
-    ThrowObject obj1{ stats_1, ThrowPolicy::NoThrow,     can_throw_1, 10 };
-    ThrowObject obj2{ stats_2, ThrowPolicy::NoThrow, can_throw_2, 20 };
-
-    vectorx::vector<ThrowObject> vec{ obj1, obj2 };
-
-    ObjectStats stats_3{}; 
-    bool can_throw_3{ true };
-    ThrowObject obj3{ stats_3, ThrowPolicy::ThrowOnCopy, can_throw_3, 0 };
-
-    try
-    {
-        vec.resize(12, obj3);
-        FAIL() << "exception expected";
-    }
-    catch (...)
-    {
-        EXPECT_EQ(stats_1.CtorCounter, 1);
-        EXPECT_EQ(stats_1.CopyCounter, 3);
-        EXPECT_EQ(stats_1.DtorCounter, 2);
-
-        EXPECT_EQ(stats_2.CtorCounter, 1);
-        EXPECT_EQ(stats_2.CopyCounter, 3);
-        EXPECT_EQ(stats_2.DtorCounter, 2);
-    }
-
-    EXPECT_EQ(std::size(vec), 2);
-    
-    EXPECT_EQ(vec[0].mMagicValue, 10);
-    EXPECT_EQ(vec[1].mMagicValue, 20);
-}
-
-// maybe rewrite
 TEST(VectorX, ComparisonWithStdVector)
 {
-    NothrowObject obj_a{};
-    NothrowObject obj_b{};
-    NothrowObject obj_c{};
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
 
-    NothrowObject std_obj_a{};
-    NothrowObject std_obj_b{};
-    NothrowObject std_obj_c{};
+    T a1{ false, 1 };
+    T a2{ false, 2 };
+    T a3{ false, 3 };
+    T a4{ false, 4 };
 
-    vectorx::vector<NothrowObject> vec{};
-    std::vector<NothrowObject> std_vec{};
+    T b1{ false, 1 };
+    T b2{ false, 2 };
+    T b3{ false, 3 };
+    T b4{ false, 4 };
 
-    vec.push_back(obj_a);
-    std_vec.push_back(std_obj_a);
+    vectorx::vector<T::internal_obj_t> vec{};
+    std::vector<T::internal_obj_t> std_vec{};
 
-    EXPECT_EQ(vec[0], std_vec[0]);
+    vec.push_back(a1.mInternalObject);
+    std_vec.push_back(b1.mInternalObject);
+
+    EXPECT_EQ(vec[0].mStats, std_vec[0].mStats);
     EXPECT_EQ(std::size(vec), std::size(std_vec));
 
-    vec.push_back(obj_b);
-    std_vec.push_back(std_obj_b); 
+    vec.push_back(a2.mInternalObject);
+    std_vec.push_back(b2.mInternalObject); 
 
-    EXPECT_EQ(vec[1], std_vec[1]);
+    EXPECT_EQ(vec[0].mStats, std_vec[0].mStats);
+    EXPECT_EQ(vec[1].mStats, std_vec[1].mStats);
+
     EXPECT_EQ(std::size(vec), std::size(std_vec));
 
-    vec.push_back(obj_c);
-    std_vec.push_back(std_obj_c); 
+    vec.push_back(a3.mInternalObject);
+    std_vec.push_back(b3.mInternalObject); 
 
-    EXPECT_EQ(vec[2], std_vec[2]);
+    EXPECT_EQ(vec[0].mStats, std_vec[0].mStats);
+    EXPECT_EQ(vec[1].mStats, std_vec[1].mStats);
+    EXPECT_EQ(vec[2].mStats, std_vec[2].mStats);
+    
     EXPECT_EQ(std::size(vec), std::size(std_vec));
+
+    vec.push_back(a4.mInternalObject);
+    std_vec.push_back(b4.mInternalObject); 
+
+    EXPECT_EQ(vec[0].mStats, std_vec[0].mStats);
+    EXPECT_EQ(vec[1].mStats, std_vec[1].mStats);
+    EXPECT_EQ(vec[2].mStats, std_vec[2].mStats);
+    EXPECT_EQ(vec[3].mStats, std_vec[3].mStats);
+
+    EXPECT_EQ(vec[0].mMagicValue, std_vec[0].mMagicValue);
+    EXPECT_EQ(vec[1].mMagicValue, std_vec[1].mMagicValue);
+    EXPECT_EQ(vec[2].mMagicValue, std_vec[2].mMagicValue);
+    EXPECT_EQ(vec[3].mMagicValue, std_vec[3].mMagicValue);
+
+    EXPECT_EQ(std::size(vec), std::size(std_vec));
+}
+
+TEST(VectorX, ComparisonWithStdVectorReserve)
+{
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
+
+    T a1{ false, 1 };
+    T b1{ false, 1 };
+
+    vectorx::vector<T::internal_obj_t> vec{};
+    std::vector<T::internal_obj_t> std_vec{};
+
+    vec.push_back(a1.mInternalObject);
+    std_vec.push_back(b1.mInternalObject);
+
+    vec.reserve(128);
+    std_vec.reserve(128);
+
+    EXPECT_EQ(vec[0].mStats, std_vec[0].mStats);
 }

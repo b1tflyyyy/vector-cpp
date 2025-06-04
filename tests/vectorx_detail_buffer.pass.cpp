@@ -125,108 +125,98 @@ TEST(BufferTest, Swap)
 
 TEST(BufferTest, ThrowOnAllocation)
 {
-    AllocStats stats{};
-
-    using ThrAlloc = ThrowingAllocator<int, ThrowOn::Alloc>; 
-    ThrAlloc throwing_allocator{ stats };
+    using T = ThrowingAllocator<int, ThrowOn::Alloc>; 
+    T alloc{ true };
     
     try
     {
-        Buffer<int, ThrAlloc> buffer{ 10, throwing_allocator };
+        Buffer<int, T::internal_alloc_t> buffer{ 10, alloc.mInternalAlloc };
+        FAIL() << "exception expected";
     }
-    catch (const std::bad_alloc& e)
-    {
-        EXPECT_EQ(stats.AllocCounter, 0);
-        EXPECT_EQ(stats.DeallocCounter, 0);
-        EXPECT_EQ(stats.CopyCounter, 0);
-    }
+    catch (const std::bad_alloc& e) {}
+
+    EXPECT_EQ(alloc.mStats.AllocCounter, 0);
+    EXPECT_EQ(alloc.mStats.DeallocCounter, 0);
+    EXPECT_EQ(alloc.mStats.CopyCounter, 1);
 }
 
 TEST(BufferTest, BufferCopyThrowOnCopyAllocator)
 {
-    AllocStats stats{};
-
-    using ThrAlloc = ThrowingAllocator<int, ThrowOn::Copy>; 
-    ThrAlloc throwing_allocator{ stats };
+    using T = ThrowingAllocator<int, ThrowOn::Copy>; 
+    T alloc{ true };
 
     try
     {
-        Buffer<int, ThrAlloc> buffer{ 10, throwing_allocator };
+        Buffer<int, T::internal_alloc_t> buffer{ 10, alloc.mInternalAlloc };
         auto copy{ buffer };
+    
+        FAIL() << "exception expected";
     }
-    catch (const std::runtime_error& e)
-    {
-        EXPECT_EQ(stats.AllocCounter, 0);
-        EXPECT_EQ(stats.DeallocCounter, 0);
-        EXPECT_EQ(stats.CopyCounter, 0);
-    }
+    catch (const std::runtime_error& e) {}
+
+    EXPECT_EQ(alloc.mStats.AllocCounter, 0);
+    EXPECT_EQ(alloc.mStats.DeallocCounter, 0);
+    EXPECT_EQ(alloc.mStats.CopyCounter, 0);
 }
 
 TEST(BufferTest, ThrowOnBufferCopyAllocatorCopyException)
 {
-    AllocStats stats{};
-    bool can_throw{ false };
+    using T = ThrowingAllocator<int, ThrowOn::Copy>; 
+    T alloc{ false };
 
     try
-    {
-        using ThrAlloc = ThrowingAllocator<int, ThrowOn::CopyControl>;
-        ThrAlloc throwing_allocator{ stats, can_throw };
-        
-        Buffer<int, ThrAlloc> buffer{ 10, throwing_allocator };
-        
-        can_throw = true;
+    {   
+        Buffer<int, T::internal_alloc_t> buffer{ 10, alloc.mInternalAlloc };
+        alloc.mCanThrow = true;
+
         auto copy{ buffer };
+        FAIL() << "exception expected";
     }
-    catch (const std::runtime_error& e)
-    {
-        EXPECT_EQ(stats.AllocCounter, 1);
-        EXPECT_EQ(stats.DeallocCounter, 1);
-        EXPECT_EQ(stats.CopyCounter, 1);
-    }
+    catch (const std::runtime_error& e) {}
+
+    EXPECT_EQ(alloc.mStats.AllocCounter, 1);
+    EXPECT_EQ(alloc.mStats.DeallocCounter, 1);
+    EXPECT_EQ(alloc.mStats.CopyCounter, 1);
 }
 
 TEST(BufferTest, ThrowOnBufferCopyAllocateException)
 {
-    AllocStats stats{};
-    bool can_throw{ false };
-
+    using T = ThrowingAllocator<int, ThrowOn::Alloc>; 
+    T alloc{ false  };
+    
     try
     {
-        using ThrAlloc = ThrowingAllocator<int, ThrowOn::AllocControl>;
-        ThrAlloc throwing_allocator{ stats, can_throw };
-        
-        Buffer<int, ThrAlloc> buffer{ 10, throwing_allocator };
-        
-        can_throw = true;
+        Buffer<int, T::internal_alloc_t> buffer{ 10, alloc.mInternalAlloc };
+        alloc.mCanThrow = true;
+
         auto copy{ buffer };
+        FAIL() << "exception expected";
     }
-    catch (const std::bad_alloc& e)
-    {
-        EXPECT_EQ(stats.AllocCounter, 1);
-        EXPECT_EQ(stats.DeallocCounter, 1);
-        EXPECT_EQ(stats.CopyCounter, 2);
-    }
+    catch (const std::bad_alloc& e) {}
+
+    EXPECT_EQ(alloc.mStats.AllocCounter, 1);
+    EXPECT_EQ(alloc.mStats.DeallocCounter, 1);
+    EXPECT_EQ(alloc.mStats.CopyCounter, 2);
 }
 
 TEST(BufferTest, InvariantsAfterCopyThrow) 
 {
-    AllocStats stats{};
-    bool can_throw{ false };
+    using T = ThrowingAllocator<int, ThrowOn::Copy>; 
+    T alloc{ false };
 
-    using ThrAlloc = ThrowingAllocator<int, ThrowOn::AllocControl>;
-    ThrAlloc alloc{ stats, can_throw };
-
-    Buffer<int, ThrAlloc> buf{ 5, alloc };
+    Buffer<int, T::internal_alloc_t> buf{ 5, alloc.mInternalAlloc };
     
     int* old_ptr{ buf.data() };
     std::size_t old_cap{ buf.capacity() };
 
     try 
     {
-        can_throw = true;
-        Buffer<int, ThrAlloc> tmp{ buf };
+        alloc.mCanThrow = true;
+        auto tmp{ buf };
+
+        FAIL() << "exception expected";
     }
-    catch (const std::bad_alloc&) {}
+    catch (const std::runtime_error&) {}
 
     EXPECT_EQ(buf.data(), old_ptr);
     EXPECT_EQ(buf.capacity(), old_cap);
@@ -234,24 +224,25 @@ TEST(BufferTest, InvariantsAfterCopyThrow)
 
 TEST(BufferTest, InvariantsAfterCopyAssignmentThrow) 
 {
-    AllocStats stats{};
-    bool can_throw{ false };
+    using T = ThrowingAllocator<int, ThrowOn::Copy>; 
+    using U = Buffer<int, T::internal_alloc_t>;
     
-    using ThrAlloc = ThrowingAllocator<int, ThrowOn::AllocControl>;
-    ThrAlloc alloc{ stats, can_throw };
+    T alloc{ false };
 
-    Buffer<int, ThrAlloc> a{ 5, alloc };
-    Buffer<int, ThrAlloc> b{ 7, alloc };
+    U a{ 5, alloc.mInternalAlloc };
+    U b{ 7, alloc.mInternalAlloc };
     
     int* a_old_ptr{ a.data() };
     std::size_t a_old_cap{ a.capacity() };
 
     try 
     {
-        can_throw = true;
+        alloc.mCanThrow = true;
         a = b;
+
+        FAIL() << "exception expected";
     }
-    catch (const std::bad_alloc&) {}
+    catch (const std::runtime_error&) {}
 
     EXPECT_EQ(a.data(), a_old_ptr);
     EXPECT_EQ(a.capacity(), a_old_cap);
