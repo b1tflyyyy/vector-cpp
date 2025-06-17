@@ -168,6 +168,8 @@ namespace vectorx
     class vector
     {
     public:
+        class iterator;
+
         using value_type = T;
         using allocator_type = Alloc;
         using size_type = std::size_t;
@@ -176,8 +178,100 @@ namespace vectorx
         using const_reference = const value_type&;
         using pointer = typename std::allocator_traits<Alloc>::pointer;
         using const_pointer = typename std::allocator_traits<Alloc>::const_pointer;
+        using iterator = iterator;
+        using const_iterator = const iterator;
 
         using buffer_t = detail::Buffer<T, Alloc>;
+
+    public:
+        class iterator
+        {
+        public:
+            // ?
+            using iterator_category = std::random_access_iterator_tag;
+            using difference_type = std::ptrdiff_t;
+            using value_type = T;
+            using pointer = T*;
+            using const_pointer = const T*;
+            using reference = T&;
+            using const_reference = const T&;
+
+        public:
+            iterator() 
+                : mPtr{ nullptr }
+            { }
+
+            explicit iterator(pointer ptr) 
+                : mPtr{ ptr }
+            { }
+
+            pointer operator->() { return mPtr; }
+            const_pointer operator->() const { return mPtr; }
+
+            reference operator*() { return *mPtr; }
+            const_reference operator*() const { return *mPtr; }
+
+            iterator& operator++()
+            {
+                ++mPtr;
+                return *this;
+            }
+
+            iterator operator++(int)
+            {
+                auto cp{ *this };
+                ++(*this);
+
+                return cp;
+            }
+
+            iterator& operator--()
+            {
+                --mPtr;
+                return *this;
+            }
+
+            iterator operator--(int)
+            {
+                auto cp{ *this };
+                --(*this);
+
+                return cp;
+            }
+
+            iterator& operator+=(std::size_t offset)
+            {
+                mPtr += offset;
+                return *this;
+            }
+
+            iterator& operator-=(std::size_t offset)
+            {
+                mPtr -= offset;
+                return *this;
+            }
+
+            reference operator[](std::size_t index) { return mPtr[index]; }
+            const_reference operator[](std::size_t index) const { return mPtr[index]; }
+
+            friend bool operator==(iterator lhs, iterator rhs) noexcept { return lhs.equals(rhs); }
+            friend bool operator!=(iterator lhs, iterator rhs) noexcept { return !lhs.equals(rhs); }
+            friend bool operator>=(iterator lhs, iterator rhs) noexcept { return lhs.mPtr >= rhs.mPtr; }
+            friend bool operator<=(iterator lhs, iterator rhs) noexcept { return lhs.mPtr <= rhs.mPtr; }
+            friend bool operator>(iterator lhs, iterator rhs) noexcept { return lhs.mPtr > rhs.mPtr; }
+            friend bool operator<(iterator lhs, iterator rhs) noexcept { return lhs.mPtr < rhs.mPtr; }
+
+            friend iterator operator+(iterator it, difference_type n) { it += n; return it; }
+            friend iterator operator-(iterator it, difference_type n) { it -= n; return it; }
+            friend iterator operator+(difference_type n, iterator it) { return it + n; }
+            friend difference_type operator-(iterator lhs, iterator rhs) { return lhs.mPtr - rhs.mPtr; }
+
+        private:
+            bool equals(iterator rhs) const noexcept { return mPtr == rhs.mPtr; }
+
+        private:
+            pointer mPtr;
+        };
 
     public:
         // Nothrow
@@ -362,6 +456,12 @@ namespace vectorx
             swap(lhs.mSize, rhs.mSize);
             swap(lhs.mBuffer, rhs.mBuffer);
         }
+
+        iterator begin() { return iterator{ std::data(mBuffer) }; }
+        const_iterator cbegin() const { return iterator{ std::data(mBuffer) }; }
+        
+        iterator end() { return iterator{ mBuffer.data(mSize) }; }
+        const_iterator cend() const { return iterator{ mBuffer.data(mSize) }; }
 
     private:
         constexpr vector(std::size_t capacity, vector& rhs)
