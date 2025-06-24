@@ -778,3 +778,46 @@ TEST(VectorX, ComparisonWithStdCtor)
     EXPECT_EQ(s1.mStats, x1.mStats);
     EXPECT_EQ(s2.mStats, x2.mStats);
 }
+
+TEST(VectorX, EraseFront)
+{
+    vectorx::vector<int> vec{ 1, 2, 3, 4, 5, 6 };
+    auto it{ vec.erase(vec.begin()) };
+
+    EXPECT_EQ(std::size(vec), 5);
+    EXPECT_EQ(*it, 2);
+
+    for (std::size_t i{}; i < std::size(vec); ++i)
+    {
+        EXPECT_EQ(vec[i], i + 2);
+    }
+}
+
+TEST(VectorX, EraseEnd)
+{
+    vectorx::vector<int> vec{ 1, 2, 3, 4, 5, 6 };
+    auto it{ vec.erase(vec.end()) };
+
+    EXPECT_EQ(std::size(vec), 5);
+    EXPECT_TRUE(it == vec.end());
+
+    for (std::size_t i{}; i < std::size(vec); ++i)
+    {
+        EXPECT_EQ(vec[i], i + 1);
+    }
+}
+
+TEST(VectorX, EraseMiddle)
+{
+    vectorx::vector<int> vec{ 1, 2, 3, 4, 5, 6 };
+    auto it{ vec.erase(vec.begin() + 2) };
+
+    EXPECT_EQ(std::size(vec), 5);
+    EXPECT_EQ(*it, 4);
+
+    EXPECT_EQ(vec[0], 1);
+    EXPECT_EQ(vec[1], 2);
+    EXPECT_EQ(vec[2], 4);
+    EXPECT_EQ(vec[3], 5);
+    EXPECT_EQ(vec[4], 6);
+}
