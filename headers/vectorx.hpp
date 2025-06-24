@@ -482,6 +482,23 @@ namespace vectorx
             return iterator{ mBuffer.data(pos_idx) };
         }
 
+        // Nothrow
+        constexpr iterator erase(const_iterator pos) noexcept
+        {
+            std::ptrdiff_t pos_idx{ std::distance(begin(), pos) };
+            std::destroy_at(mBuffer.data(pos_idx));
+
+            for (std::ptrdiff_t i{ pos_idx }; i < static_cast<std::ptrdiff_t>(mSize) - 1; ++i)
+            {
+                *mBuffer.data(i) = std::move(*mBuffer.data(i + 1));
+            }
+
+            auto* ptr{ pos_idx == static_cast<std::ptrdiff_t>(mSize) ? mBuffer.data(mSize - 1) : mBuffer.data(pos_idx) };
+            --mSize;
+
+            return iterator{ ptr };
+        }
+
     private:
         constexpr vector(std::size_t capacity, vector& rhs)
             : mBuffer{ capacity } // move alloc or not ?
