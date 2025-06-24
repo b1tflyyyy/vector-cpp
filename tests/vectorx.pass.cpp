@@ -631,3 +631,150 @@ TEST(VectorX, ComparisonWithStdVectorReserve)
 
     EXPECT_EQ(vec[0].mStats, std_vec[0].mStats);
 }
+
+TEST(VectorX, InsertNothrow)
+{
+    vectorx::vector<int> vec{ 1, 2, 3, 4, 5, 6, 7 };
+
+    auto it{ vec.insert(vec.begin(), 77) };
+    EXPECT_EQ(*it, 77);
+    
+    EXPECT_EQ(vec[0], 77);
+    EXPECT_EQ(std::size(vec), 8);
+
+    for (int i{ 1 }; i < static_cast<int>(std::size(vec)); ++i)
+    {
+        EXPECT_EQ(vec[i], i);
+    }
+}
+
+TEST(VectorX, InsertAtEnd)
+{
+    vectorx::vector<int> vec{ 1, 2, 3, 4 };
+
+    auto it{ vec.insert(vec.end(), 99) };
+    EXPECT_EQ(*it, 99);
+
+    EXPECT_EQ(vec[4], 99);
+    EXPECT_EQ(std::size(vec), 5);
+
+    for (int i{ 0 }; i < static_cast<int>(std::size(vec)) - 1; ++i)
+    {
+        EXPECT_EQ(vec[i], i + 1);
+    }
+}
+
+TEST(VectorX, InsertInMiddle)
+{
+    vectorx::vector<int> vec{ 10, 20, 30, 40, 50 };
+
+    auto it{ vec.insert(vec.begin() + 2, 25) };
+    EXPECT_EQ(*it, 25);
+
+    EXPECT_EQ(vec[2], 25);
+    EXPECT_EQ(std::size(vec), 6);
+
+    EXPECT_EQ(vec[0], 10);
+    EXPECT_EQ(vec[1], 20);
+    EXPECT_EQ(vec[3], 30);
+    EXPECT_EQ(vec[4], 40);
+    EXPECT_EQ(vec[5], 50);
+}
+
+TEST(VectorX, InsertMultipleTimes)
+{
+    vectorx::vector<char> vec{ 'a', 'b', 'c' };
+
+    auto it1{ vec.insert(vec.begin() + 1, 'x') };
+    EXPECT_EQ(*it1, 'x');
+
+    auto it2{ vec.insert(vec.begin() + 3, 'y') };
+    EXPECT_EQ(*it2, 'y');
+    
+    auto it3{ vec.insert(vec.end(), 'z') };
+    EXPECT_EQ(*it3, 'z');    
+
+    EXPECT_EQ(std::size(vec), 6);
+    EXPECT_EQ(vec[0], 'a');
+    EXPECT_EQ(vec[1], 'x');
+    EXPECT_EQ(vec[2], 'b');
+    EXPECT_EQ(vec[3], 'y');
+    EXPECT_EQ(vec[4], 'c');
+    EXPECT_EQ(vec[5], 'z');
+}
+
+TEST(VectorX, InsertThrow)
+{
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
+    vectorx::vector<T> vec{ T{ false, 1 }, T{ false, 2 }, T{ false, 3 } };
+
+    try
+    {
+        vec.insert(vec.end(), T{ true, 44});
+        FAIL() << "exception expected";
+    }
+    catch (const std::runtime_error& e) {}
+    
+    EXPECT_EQ(std::size(vec), 3);
+
+    for (std::size_t i{}; i < std::size(vec); ++i)
+    {
+        EXPECT_EQ(vec[i].mInternalObject.mMagicValue, i + 1);
+        
+        EXPECT_EQ(vec[i].mStats.CtorCounter, 1);
+        EXPECT_EQ(vec[i].mStats.CopyCounter, 0);
+        EXPECT_EQ(vec[i].mStats.MoveCounter, 0);
+        EXPECT_EQ(vec[i].mStats.DtorCounter, 0);
+    }
+}
+
+TEST(VectorX, InsertNothrowStats)
+{
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
+
+    T o1{ false, 1 };
+    T o2{ false, 2 };
+    T o3{ false, 3 };
+
+    vectorx::vector<T::internal_obj_t> vec{ o1.mInternalObject, o2.mInternalObject };
+
+    vec.insert(vec.begin(), o3.mInternalObject);
+
+    EXPECT_EQ(std::size(vec), 3);
+
+    EXPECT_EQ(vec[0].mMagicValue, 3);
+    EXPECT_EQ(vec[1].mMagicValue, 1);
+    EXPECT_EQ(vec[2].mMagicValue, 2);
+
+    EXPECT_EQ(o3.mStats.CtorCounter, 1);
+    EXPECT_EQ(o3.mStats.CopyCounter, 1);
+    EXPECT_EQ(o3.mStats.MoveCounter, 0);
+    EXPECT_EQ(o3.mStats.DtorCounter, 0);
+
+    EXPECT_EQ(o1.mStats.CtorCounter, 1);
+    EXPECT_EQ(o1.mStats.CopyCounter, 2);
+    EXPECT_EQ(o1.mStats.MoveCounter, 1);
+    EXPECT_EQ(o1.mStats.DtorCounter, 2);
+
+    EXPECT_EQ(o2.mStats.CtorCounter, 1);
+    EXPECT_EQ(o2.mStats.CopyCounter, 2);
+    EXPECT_EQ(o2.mStats.MoveCounter, 1);
+    EXPECT_EQ(o2.mStats.DtorCounter, 2);
+}
+
+TEST(VectorX, ComparisonWithStdCtor)
+{
+    using T = ThrowObject<ThrowPolicy::ThrowOnCopy>;
+
+    T s1{ false, 1 };
+    T s2{ false, 2 };
+
+    T x1{ false, 11 };
+    T x2{ false, 22 };
+
+    std::vector<T::internal_obj_t> sv{ s1.mInternalObject, s2.mInternalObject };
+    vectorx::vector<T::internal_obj_t> xv{ x1.mInternalObject, x2.mInternalObject };
+
+    EXPECT_EQ(s1.mStats, x1.mStats);
+    EXPECT_EQ(s2.mStats, x2.mStats);
+}
