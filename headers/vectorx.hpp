@@ -457,11 +457,30 @@ namespace vectorx
             swap(lhs.mBuffer, rhs.mBuffer);
         }
 
-        iterator begin() { return iterator{ std::data(mBuffer) }; }
-        const_iterator cbegin() const { return iterator{ std::data(mBuffer) }; }
+        constexpr iterator begin() { return iterator{ std::data(mBuffer) }; }
+        constexpr const_iterator cbegin() const { return iterator{ std::data(mBuffer) }; }
         
-        iterator end() { return iterator{ mBuffer.data(mSize) }; }
-        const_iterator cend() const { return iterator{ mBuffer.data(mSize) }; }
+        constexpr iterator end() { return iterator{ mBuffer.data(mSize) }; }
+        constexpr const_iterator cend() const { return iterator{ mBuffer.data(mSize) }; }
+
+        // Strong
+        constexpr iterator insert(const_iterator pos, const T& value)
+        {
+            auto cap{ capacity() };
+            cap = (cap < mSize + 1 ? mSize + 1 : cap);
+
+            vector copy(cap);
+            auto pos_idx{ std::distance(begin(), pos) };
+
+            std::construct_at(copy.mBuffer.data(pos_idx), value);
+            std::uninitialized_move_n(std::data(mBuffer), pos_idx, std::data(copy.mBuffer));
+            std::uninitialized_move_n(mBuffer.data(pos_idx), mSize - pos_idx, copy.mBuffer.data(pos_idx + 1));
+            
+            copy.mSize = mSize + 1;
+
+            swap(*this, copy);
+            return iterator{ mBuffer.data(pos_idx) };
+        }
 
     private:
         constexpr vector(std::size_t capacity, vector& rhs)
